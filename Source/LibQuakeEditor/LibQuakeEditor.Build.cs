@@ -7,6 +7,15 @@ public class LibQuakeEditor : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine" });
-		PrivateDependencyModuleNames.AddRange(new[] { "UnrealEd", "Projects", "LibQuake", "LibQuakeCore" });
+		PrivateDependencyModuleNames.AddRange(new[]
+		{
+			"AssetDefinition",
+			"AssetRegistry",
+			"LibQuake",
+			"LibQuakeCore",
+			"MessageLog",
+			"Projects",
+			"UnrealEd",
+		});
 	}
 }
