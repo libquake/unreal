@@ -1,0 +1,27 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1",
+	"FriendlyName": "LibQuake",
+	"Description": "Quake map, bsp and wad importer based on libquake",
+	"Category": "Importers",
+	"CreatedBy": "Tino Goehlert",
+	"CreatedByURL": "https://github.com/libquake",
+	"DocsURL": "https://libquake.github.io/",
+	"SupportURL": "https://github.com/libquake/unreal/issues",
+	"EngineVersion": "5.8.0",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "LibQuake",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "LibQuakeEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
