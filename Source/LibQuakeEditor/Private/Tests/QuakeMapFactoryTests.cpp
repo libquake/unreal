@@ -360,6 +360,48 @@ bool FQuakeMissingTextureTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeMeshLibraryTest, "LibQuake.Editor.MeshLibrary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeMeshLibraryTest::RunTest(const FString& Parameters)
+{
+	UQuakeMap* Map = ImportTestMap(TEXT("meshlib"), TEXT("meshlib.map"));
+	if (!TestNotNull(TEXT("map imports"), Map))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the worldspawn key makes it a library"), Map->IsMeshLibrary());
+
+	TMap<FString, const UStaticMesh*> Meshes;
+	for (const UStaticMesh* Mesh : Map->Meshes)
+	{
+		Meshes.Add(Mesh->GetName(), Mesh);
+	}
+	TestTrue(TEXT("loose brushes of the worldspawn"), Meshes.Contains(TEXT("SM_worldspawn_0")));
+	TestTrue(TEXT("a group is named after it"), Meshes.Contains(TEXT("SM_crate")));
+	TestTrue(TEXT("so is the second one"), Meshes.Contains(TEXT("SM_pillar")));
+	TestTrue(TEXT("an entity in a group gets the group's name"), Meshes.Contains(TEXT("SM_pillar_1")));
+
+	// the crate spans 0..32 on every axis, it stands on its pivot
+	if (const UStaticMesh* const* Crate = Meshes.Find(TEXT("SM_crate")))
+	{
+		const FBox Bounds = (*Crate)->GetBoundingBox();
+		TestEqual(TEXT("crate stands on its pivot"), Bounds.Min.Z, 0.0, 0.01);
+		TestTrue(TEXT("crate is centered on it"), FVector2D(Bounds.GetCenter()).Equals(FVector2D::ZeroVector, 0.01));
+	}
+
+	FText Error;
+	TestFalse(TEXT("a library is not placed"),
+		GetMutableDefault<UActorFactoryQuakeMap>()->CanCreateActorFrom(FAssetData(Map), Error));
+	TestFalse(TEXT("with a hint"), Error.IsEmpty());
+
+	Map->Entities[0].Keys.Remove(TEXT("_meshlib"));
+	TestFalse(TEXT("without the key it is a level"), Map->IsMeshLibrary());
+	Map->Settings.bMeshLibrary = true;
+	TestTrue(TEXT("the setting does the same"), Map->IsMeshLibrary());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeBspImportTest, "LibQuake.Editor.ImportBsp",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 

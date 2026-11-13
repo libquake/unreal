@@ -335,6 +335,48 @@ namespace
 		return Mesh;
 	}
 
+	/** A key of a libquake entity, empty if it has none. */
+	FString KeyOf(const quakelib::LevelEntity& Entity, const char* Key)
+	{
+		const auto Found = Entity.attributes.find(Key);
+		return Found != Entity.attributes.end() ? ToFString(Found->second) : FString();
+	}
+
+	/** TrenchBroom group names by group id ("_tb_id"), from the func_group entities that are groups. */
+	TMap<FString, FString> GroupNames(const quakelib::Level& Level)
+	{
+		TMap<FString, FString> Names;
+		for (const quakelib::LevelEntity& Entity : Level.entities)
+		{
+			if (KeyOf(Entity, "_tb_type") == TEXT("_tb_group"))
+			{
+				Names.Add(KeyOf(Entity, "_tb_id"), KeyOf(Entity, "_tb_name"));
+			}
+		}
+		return Names;
+	}
+
+	/**
+	 * The name of a brush entity's mesh: "SM_<name>" after the TrenchBroom group it is or it is in, "SM_<class>_<n>"
+	 * for entities outside of groups.
+	 */
+	FString MeshName(const quakelib::LevelEntity& Entity, const TMap<FString, FString>& Groups,
+		TMap<FString, int32>& ClassCount)
+	{
+		FString GroupName = KeyOf(Entity, "_tb_name");
+		if (GroupName.IsEmpty())
+		{
+			GroupName = Groups.FindRef(KeyOf(Entity, "_tb_group"));
+		}
+		if (!GroupName.IsEmpty())
+		{
+			return TEXT("SM_") + GroupName;
+		}
+
+		const FString ClassName = ToFString(Entity.classname);
+		return FString::Printf(TEXT("SM_%s_%d"), *ClassName, ClassCount.FindOrAdd(ClassName)++);
+	}
+
 	/** Meshes, materials and entities of a built level, written into the map asset. */
 	void BuildAssets(FImport& Import, const quakelib::Level& Level)
 	{
@@ -343,6 +385,7 @@ namespace
 		Map->Meshes.Reset();
 		Map->Entities.Reset();
 
+		const TMap<FString, FString> Groups = GroupNames(Level);
 		TMap<FString, int32> ClassCount;
 		for (const quakelib::LevelEntity& Entity : Level.entities)
 		{
@@ -363,9 +406,8 @@ namespace
 			const quakelib::EntityGeometry& Geometry = Level.geometry[Entity.geometry];
 			Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Scale)));
 
-			const FString Name = LibQuakeEditor::UniqueAssetName(
-				FString::Printf(TEXT("SM_%s_%d"), *Out.ClassName, ClassCount.FindOrAdd(Out.ClassName)++),
-				Import.UsedNames);
+			const FString Name =
+				LibQuakeEditor::UniqueAssetName(MeshName(Entity, Groups, ClassCount), Import.UsedNames);
 			if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry, Out.bInvisible))
 			{
 				Out.Mesh = Map->Meshes.Add(Mesh);

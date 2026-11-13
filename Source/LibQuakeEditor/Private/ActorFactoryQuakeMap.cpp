@@ -14,7 +14,18 @@ UActorFactoryQuakeMap::UActorFactoryQuakeMap()
 
 bool UActorFactoryQuakeMap::CanCreateActorFrom(const FAssetData& AssetData, FText& OutErrorMsg)
 {
-	return AssetData.IsInstanceOf<UQuakeMap>();
+	if (!AssetData.IsInstanceOf<UQuakeMap>())
+	{
+		return false;
+	}
+
+	const UQuakeMap* Map = Cast<UQuakeMap>(AssetData.GetAsset());
+	if (Map && Map->IsMeshLibrary())
+	{
+		OutErrorMsg = LOCTEXT("MeshLibrary", "The map is a mesh library, drag its meshes into the level.");
+		return false;
+	}
+	return true;
 }
 
 void UActorFactoryQuakeMap::PostSpawnActor(UObject* Asset, AActor* NewActor)

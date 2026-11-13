@@ -14,7 +14,8 @@ Maps still find them, the wad asset keeps the Quake names.
 Drag the `.map` into the Content Browser. The import looks up the textures in the imported wads, the ones named in
 the map's `wad` key first, and writes to `<map>_Generated`:
 
-- `SM_<class>_<n>`: a static mesh per brush entity, `SM_worldspawn_0` is the world
+- `SM_<class>_<n>`: a static mesh per brush entity, `SM_worldspawn_0` is the world. TrenchBroom groups give
+  their name instead, `SM_<group>`
 - `MI_<texture>`: a material instance per texture
 
 Import the wads first. Textures that are missing are reported in Window > Message Log > LibQuake, their faces

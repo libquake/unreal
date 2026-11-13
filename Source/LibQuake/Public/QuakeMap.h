@@ -41,6 +41,13 @@ struct LIBQUAKE_API FQuakeMapSettings
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Import")
 	EQuakePivot Pivot = EQuakePivot::BottomCenter;
 
+	/**
+	 * The map is a collection of meshes, e.g. props, not a level: it cannot be placed, its meshes are dragged into
+	 * levels one by one. The worldspawn key "_meshlib" "1" does the same from TrenchBroom.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Import")
+	bool bMeshLibrary = false;
+
 	/** Quake units per lightmap texel. 16 matches Quake, smaller values give sharper shadows. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))
 	float LuxelSize = 16.0f;
@@ -95,6 +102,10 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Generated")
 	TArray<FQuakeMapEntity> Entities;
+
+	/** bMeshLibrary or the worldspawn key "_meshlib" ("qu_meshlib" in older maps). */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	bool IsMeshLibrary() const;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(VisibleAnywhere, Instanced, Category = "Import")

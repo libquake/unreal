@@ -16,6 +16,18 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 Brush entities without visible faces, like triggers, get a mesh made of their brush hulls. It is never drawn, it
 is there for collision and overlaps.
 
+## Mesh libraries
+
+A map can be a collection of meshes instead of a level, e.g. a map full of props. Set the worldspawn key
+`_meshlib` to `1` in TrenchBroom (`qu_meshlib` from older maps works too) or turn on `bMeshLibrary` in the
+[map settings](../reference/map-settings.md). Every brush entity becomes a mesh as usual, and each TrenchBroom
+group is one: its mesh is named after the group, `SM_crate` for a group "crate", with its pivot at the bottom
+center (see below). Brush entities inside a group get the group's name with a number, loose brushes of the
+worldspawn end up in `SM_worldspawn_0`.
+
+A mesh library is not placed: dragging it into a level or Place in Level refuse it, its meshes are dragged into
+levels like any other static mesh. A reimport updates them in place, as long as the group names stay.
+
 ## Pivots
 
 Every brush entity except the worldspawn has its mesh and its actor at its own pivot, by default the center of

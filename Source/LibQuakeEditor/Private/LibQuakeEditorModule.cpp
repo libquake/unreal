@@ -3,6 +3,7 @@
 #include "ContentBrowserMenuContexts.h"
 #include "Editor.h"
 #include "EngineUtils.h"
+#include "Logging/MessageLog.h"
 #include "MessageLogModule.h"
 #include "Misc/CoreDelegates.h"
 #include "Modules/ModuleManager.h"
@@ -34,6 +35,15 @@ namespace
 		GEditor->SelectNone(false, true);
 		for (UQuakeMap* Map : Context->LoadSelectedObjects<UQuakeMap>())
 		{
+			if (Map->IsMeshLibrary())
+			{
+				FMessageLog(LibQuakeEditor::LogName).Warning(FText::Format(
+					LOCTEXT("MeshLibrary", "{0} is a mesh library, drag its meshes into the level"),
+					FText::FromString(Map->GetName())));
+				FMessageLog(LibQuakeEditor::LogName).Notify(LOCTEXT("NotPlaced", "Quake map not placed"));
+				continue;
+			}
+
 			if (AActor* Placed = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity))
 			{
 				GEditor->SelectActor(Placed, true, true);

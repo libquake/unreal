@@ -4,7 +4,10 @@
 
 #include "ActorFactoryQuakeMap.generated.h"
 
-/** Drag and drop of a Quake Map places an AQuakeMapActor with the actors of its entities. */
+/**
+ * Drag and drop of a Quake Map places an AQuakeMapActor with the actors of its entities. Mesh libraries are refused,
+ * their meshes are placed instead.
+ */
 UCLASS()
 class UActorFactoryQuakeMap : public UActorFactory
 {
