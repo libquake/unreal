@@ -40,6 +40,21 @@ namespace LibQuakeEditor
 		return Name;
 	}
 
+	FVector3f ParseVector(const FString* Value)
+	{
+		FVector3f Result = FVector3f::ZeroVector;
+		if (Value)
+		{
+			TArray<FString> Parts;
+			Value->ParseIntoArrayWS(Parts);
+			for (int32 i = 0; i < 3 && i < Parts.Num(); i++)
+			{
+				Result[i] = FCString::Atof(*Parts[i]);
+			}
+		}
+		return Result;
+	}
+
 	void ReportError(const FString& File, const FString& Error)
 	{
 		FMessageLog(LogName).Error(FText::Format(LOCTEXT("Message", "{0}: {1}"),

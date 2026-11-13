@@ -11,13 +11,16 @@ public class LibQuakeEditor : ModuleRules
 		{
 			"AssetDefinition",
 			"AssetRegistry",
+			"ContentBrowser",
 			"LibQuake",
 			"LibQuakeCore",
 			"MeshDescription",
 			"MessageLog",
 			"Projects",
 			"RHI",
+			"SlateCore",
 			"StaticMeshDescription",
+			"ToolMenus",
 			"UnrealEd",
 		});
 	}

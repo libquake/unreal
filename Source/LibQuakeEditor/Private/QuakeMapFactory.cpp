@@ -26,6 +26,25 @@ namespace
 	}
 
 	/**
+	 * Placement of a point entity from "origin" and "angle", or the yaw of "angles" (pitch yaw roll). Quake turns
+	 * counterclockwise seen from above, the mirrored y axis turns that around.
+	 */
+	FTransform EntityTransform(const TMap<FString, FString>& Keys, float Scale)
+	{
+		const FVector Location = LibQuake::ToUnrealPosition(LibQuakeEditor::ParseVector(Keys.Find(TEXT("origin"))), Scale);
+		float Yaw = 0;
+		if (const FString* Angle = Keys.Find(TEXT("angle")))
+		{
+			Yaw = FCString::Atof(**Angle);
+		}
+		else if (const FString* Angles = Keys.Find(TEXT("angles")))
+		{
+			Yaw = LibQuakeEditor::ParseVector(Angles).Y;
+		}
+		return FTransform(FRotator(0, -Yaw, 0), Location);
+	}
+
+	/**
 	 * The imported wads, the ones the map names first and in that order. The other wads of the project are only
 	 * loaded when a texture is not in those.
 	 */
@@ -295,10 +314,11 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 	Options.csg = Map->Settings.bCSG;
 	Options.textureSize = [&Wads](const std::string& Name) -> std::pair<int, int>
 	{
+		// a missing texture gets a size anyway, without one its faces have no uvs and no tangents
 		const FQuakeWadTexture* Texture = Wads.Find(ToFString(Name));
 		return Texture && Texture->Texture
 			? std::pair<int, int>(Texture->Texture->Source.GetSizeX(), Texture->Texture->Source.GetSizeY())
-			: std::pair<int, int>(0, 0);
+			: std::pair<int, int>(64, 64);
 	};
 
 	quakelib::Level Level;
@@ -319,19 +339,28 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 
 	TMap<FString, int32> ClassCount;
 	Map->Meshes.Reset();
-	for (int32 Index = 0; Index < (int32)Level.entities.size(); Index++)
+	Map->Entities.Reset();
+	for (const quakelib::LevelEntity& Entity : Level.entities)
 	{
-		const quakelib::LevelEntity& Entity = Level.entities[Index];
+		FQuakeMapEntity& Out = Map->Entities.AddDefaulted_GetRef();
+		Out.ClassName = ToFString(Entity.classname);
+		for (const auto& [Key, Value] : Entity.attributes)
+		{
+			Out.Keys.Add(ToFString(Key), ToFString(Value));
+		}
+		Out.Transform = EntityTransform(Out.Keys, Map->Settings.Scale);
+
 		if (Entity.geometry < 0)
 		{
 			continue;
 		}
-		const FString ClassName = ToFString(Entity.classname);
+		const quakelib::EntityGeometry& Geometry = Level.geometry[Entity.geometry];
+		Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Map->Settings.Scale)));
 		const FString Name = LibQuakeEditor::UniqueAssetName(
-			FString::Printf(TEXT("SM_%s_%d"), *ClassName, ClassCount.FindOrAdd(ClassName)++), Import.UsedNames);
-		if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Level.geometry[Entity.geometry]))
+			FString::Printf(TEXT("SM_%s_%d"), *Out.ClassName, ClassCount.FindOrAdd(Out.ClassName)++), Import.UsedNames);
+		if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry))
 		{
-			Map->Meshes.Add(Mesh);
+			Out.Mesh = Map->Meshes.Add(Mesh);
 		}
 	}
 

@@ -21,6 +21,9 @@ namespace LibQuakeEditor
 	/** Asset and package name for a Quake name, which may contain characters assets cannot have ('*', '{'). */
 	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used);
 
+	/** "x y z" from an entity key, missing values are 0. */
+	FVector3f ParseVector(const FString* Value);
+
 	void ReportError(const FString& File, const FString& Error);
 	void ReportWarning(const FString& File, const FString& Warning);
 
