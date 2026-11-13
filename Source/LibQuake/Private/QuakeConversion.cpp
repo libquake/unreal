@@ -6,7 +6,8 @@
 
 namespace LibQuake
 {
-	bool BuildMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale, FMeshDescription& OutMesh)
+	bool BuildMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale, FMeshDescription& OutMesh,
+		quakelib::SurfaceType Type)
 	{
 		FStaticMeshAttributes Attributes(OutMesh);
 		Attributes.Register();
@@ -21,7 +22,7 @@ namespace LibQuake
 		TArray<FVertexInstanceID> Instances;
 		for (const quakelib::RenderMesh& Mesh : Geometry.meshes)
 		{
-			if (Mesh.type != quakelib::SurfaceType::SOLID || Mesh.indices.empty())
+			if (Mesh.type != Type || Mesh.indices.empty())
 			{
 				continue;
 			}

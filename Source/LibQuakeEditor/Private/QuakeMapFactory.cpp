@@ -112,7 +112,8 @@ namespace
 		UQuakeMap* Map = nullptr;
 		FString Filename;
 		FString Folder;
-		FWadLookup* Wads = nullptr;
+		/** The texture with a Quake name, from the wads for a map and from the file itself for a bsp. */
+		TFunction<const FQuakeWadTexture*(const FString&)> FindTexture;
 		TMap<FString, UMaterialInterface*> Materials;
 		TSet<FString> SkyTextures;
 		TSet<FString> UsedNames;
@@ -132,11 +133,11 @@ namespace
 			return *Existing;
 		}
 
-		const FQuakeWadTexture* Texture = Import.Wads->Find(TextureName);
+		const FQuakeWadTexture* Texture = Import.FindTexture(TextureName);
 		if (!Texture)
 		{
 			LibQuakeEditor::ReportWarning(Import.Filename, FString::Printf(
-				TEXT("texture '%s' not found in the imported wads"), *TextureName));
+				TEXT("texture '%s' not found"), *TextureName));
 		}
 		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
 		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
@@ -195,8 +196,9 @@ namespace
 	}
 
 	/**
-	 * The mesh of a brush entity. Entities without visible faces (triggers) get their hulls as mesh, bOutInvisible
-	 * tells them apart: they are only there for collision and overlaps. Null if the entity has neither.
+	 * The mesh of a brush entity. Entities without visible faces (triggers) get their hulls as mesh, or in a bsp
+	 * their clip faces. bOutInvisible tells them apart: they are only there for collision and overlaps. Null if the
+	 * entity has none of these.
 	 */
 	UStaticMesh* BuildStaticMesh(FImport& Import, const FString& Name, const quakelib::EntityGeometry& Geometry,
 		bool& bOutInvisible)
@@ -209,7 +211,11 @@ namespace
 			Description = FMeshDescription();
 			if (!LibQuake::BuildHullMeshDescription(Geometry, Scale, Description))
 			{
-				return nullptr;
+				Description = FMeshDescription();
+				if (!LibQuake::BuildMeshDescription(Geometry, Scale, Description, quakelib::SurfaceType::CLIP))
+				{
+					return nullptr;
+				}
 			}
 		}
 
@@ -254,13 +260,15 @@ namespace
 			Mesh->GetSectionInfoMap().Set(0, Section, Info);
 		}
 
-		// brush hulls as simple collision, they are convex already and exact
+		// brush hulls as simple collision, they are convex already and exact. A bsp has none, there the mesh itself
+		// is the collision
 		Mesh->CreateBodySetup();
 		UBodySetup* Body = Mesh->GetBodySetup();
 		Body->RemoveSimpleCollision();
 		Body->AggGeom.ConvexElems = LibQuake::BuildConvexElements(Geometry, Scale,
 			[](quakelib::CollisionHull::Type Type) { return Type != quakelib::CollisionHull::Type::Liquid; });
-		Body->CollisionTraceFlag = CTF_UseSimpleAsComplex;
+		Body->CollisionTraceFlag =
+			Body->AggGeom.ConvexElems.IsEmpty() ? CTF_UseComplexAsSimple : CTF_UseSimpleAsComplex;
 		Body->InvalidatePhysicsData();
 		Body->CreatePhysicsMeshes();
 
@@ -273,11 +281,117 @@ namespace
 		}
 		return Mesh;
 	}
+
+	/** Meshes, materials and entities of a built level, written into the map asset. */
+	void BuildAssets(FImport& Import, const quakelib::Level& Level)
+	{
+		UQuakeMap* Map = Import.Map;
+		TMap<FString, int32> ClassCount;
+		Map->Meshes.Reset();
+		Map->Entities.Reset();
+		for (const quakelib::LevelEntity& Entity : Level.entities)
+		{
+			FQuakeMapEntity& Out = Map->Entities.AddDefaulted_GetRef();
+			Out.ClassName = ToFString(Entity.classname);
+			for (const auto& [Key, Value] : Entity.attributes)
+			{
+				Out.Keys.Add(ToFString(Key), ToFString(Value));
+			}
+			Out.Transform = EntityTransform(Out.Keys, Map->Settings.Scale);
+
+			if (Entity.geometry < 0)
+			{
+				continue;
+			}
+			const quakelib::EntityGeometry& Geometry = Level.geometry[Entity.geometry];
+			Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Map->Settings.Scale)));
+			const FString Name = LibQuakeEditor::UniqueAssetName(
+				FString::Printf(TEXT("SM_%s_%d"), *Out.ClassName, ClassCount.FindOrAdd(Out.ClassName)++),
+				Import.UsedNames);
+			if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry, Out.bInvisible))
+			{
+				Out.Mesh = Map->Meshes.Add(Mesh);
+			}
+		}
+	}
+
+	/** Parses and builds a .map with the textures of the imported wads. */
+	bool BuildFromMap(FImport& Import, quakelib::Level& OutLevel, FString& OutError)
+	{
+		quakelib::MapDocument Document;
+		if (!LibQuake::ParseMap(Import.Filename, Document, OutError))
+		{
+			return false;
+		}
+
+		TSharedRef<FWadLookup> Wads = MakeShared<FWadLookup>(Document, Import.Filename);
+		Import.FindTexture = [Wads](const FString& Name) { return Wads->Find(Name); };
+
+		quakelib::MapBuildOptions Options;
+		Options.csg = Import.Map->Settings.bCSG;
+		Options.textureSize = [&Import](const std::string& Name) -> std::pair<int, int>
+		{
+			// a missing texture gets a size anyway, without one its faces have no uvs and no tangents
+			const FQuakeWadTexture* Texture = Import.FindTexture(ToFString(Name));
+			return Texture && Texture->Texture
+				? std::pair<int, int>(Texture->Texture->Source.GetSizeX(), Texture->Texture->Source.GetSizeY())
+				: std::pair<int, int>(64, 64);
+		};
+		return LibQuake::BuildMap(Document, Options, OutLevel, OutError);
+	}
+
+	/** Loads a .bsp and writes the textures it carries next to the meshes, as T_<name>. */
+	bool BuildFromBsp(FImport& Import, TArray<FQuakeWadTexture>& OutTextures, quakelib::Level& OutLevel,
+		FString& OutError)
+	{
+		if (!LibQuake::LoadBsp(Import.Filename, {}, OutLevel, OutError))
+		{
+			return false;
+		}
+
+		OutTextures.Reset(OutLevel.textures.size());
+		for (const quakelib::TextureInfo& Info : OutLevel.textures)
+		{
+			if (Info.rgba.empty())
+			{
+				continue;
+			}
+			FQuakeWadTexture& Entry = OutTextures.AddDefaulted_GetRef();
+			Entry.Name = ToFString(Info.name);
+			Entry.bAlpha = Info.hasAlpha;
+			const FString Name = LibQuakeEditor::UniqueAssetName(TEXT("T_") + Entry.Name, Import.UsedNames);
+			const auto Write = [&](const FString& AssetName, const std::vector<uint8_t>& Rgba)
+			{
+				return LibQuakeEditor::WriteTexture(Import.Folder, AssetName, Info.width, Info.height,
+					TArray<uint8>(Rgba.data(), Rgba.size()));
+			};
+			Entry.Texture = Write(Name, Info.rgba);
+			if (Info.hasEmission)
+			{
+				Entry.Emission = Write(LibQuakeEditor::UniqueAssetName(Name + TEXT("_emission"), Import.UsedNames),
+					Info.emission);
+			}
+			if (!Info.skyFront.empty())
+			{
+				Entry.SkyFront = Write(LibQuakeEditor::UniqueAssetName(Name + TEXT("_front"), Import.UsedNames),
+					Info.skyFront);
+			}
+		}
+		Import.FindTexture = [&OutTextures](const FString& Name)
+		{
+			return OutTextures.FindByPredicate([&Name](const FQuakeWadTexture& Texture)
+			{
+				return Texture.Name.Equals(Name, ESearchCase::IgnoreCase);
+			});
+		};
+		return true;
+	}
 }
 
 UQuakeMapFactory::UQuakeMapFactory()
 {
 	Formats.Add(TEXT("map;Quake Map"));
+	Formats.Add(TEXT("bsp;Quake BSP"));
 	SupportedClass = UQuakeMap::StaticClass();
 	bCreateNew = false;
 	bEditorImport = true;
@@ -332,29 +446,17 @@ int32 UQuakeMapFactory::GetPriority() const
 
 bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 {
+	FImport Import;
+	Import.Map = Map;
+	Import.Filename = Filename;
+	Import.Folder = FPackageName::GetLongPackagePath(Map->GetOutermost()->GetName()) /
+		(Map->GetName() + TEXT("_Generated"));
+
 	FString Error;
-	quakelib::MapDocument Document;
-	if (!LibQuake::ParseMap(Filename, Document, Error))
-	{
-		LibQuakeEditor::ReportError(Filename, Error);
-		LibQuakeEditor::NotifyIfReported();
-		return false;
-	}
-
-	FWadLookup Wads(Document, Filename);
-	quakelib::MapBuildOptions Options;
-	Options.csg = Map->Settings.bCSG;
-	Options.textureSize = [&Wads](const std::string& Name) -> std::pair<int, int>
-	{
-		// a missing texture gets a size anyway, without one its faces have no uvs and no tangents
-		const FQuakeWadTexture* Texture = Wads.Find(ToFString(Name));
-		return Texture && Texture->Texture
-			? std::pair<int, int>(Texture->Texture->Source.GetSizeX(), Texture->Texture->Source.GetSizeY())
-			: std::pair<int, int>(64, 64);
-	};
-
 	quakelib::Level Level;
-	if (!LibQuake::BuildMap(Document, Options, Level, Error))
+	TArray<FQuakeWadTexture> BspTextures;
+	const bool bBsp = FPaths::GetExtension(Filename).Equals(TEXT("bsp"), ESearchCase::IgnoreCase);
+	if (!(bBsp ? BuildFromBsp(Import, BspTextures, Level, Error) : BuildFromMap(Import, Level, Error)))
 	{
 		LibQuakeEditor::ReportError(Filename, Error);
 		LibQuakeEditor::NotifyIfReported();
@@ -362,40 +464,7 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 	}
 
 	Map->Modify();
-	FImport Import;
-	Import.Map = Map;
-	Import.Filename = Filename;
-	Import.Folder = FPackageName::GetLongPackagePath(Map->GetOutermost()->GetName()) /
-		(Map->GetName() + TEXT("_Generated"));
-	Import.Wads = &Wads;
-
-	TMap<FString, int32> ClassCount;
-	Map->Meshes.Reset();
-	Map->Entities.Reset();
-	for (const quakelib::LevelEntity& Entity : Level.entities)
-	{
-		FQuakeMapEntity& Out = Map->Entities.AddDefaulted_GetRef();
-		Out.ClassName = ToFString(Entity.classname);
-		for (const auto& [Key, Value] : Entity.attributes)
-		{
-			Out.Keys.Add(ToFString(Key), ToFString(Value));
-		}
-		Out.Transform = EntityTransform(Out.Keys, Map->Settings.Scale);
-
-		if (Entity.geometry < 0)
-		{
-			continue;
-		}
-		const quakelib::EntityGeometry& Geometry = Level.geometry[Entity.geometry];
-		Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Map->Settings.Scale)));
-		const FString Name = LibQuakeEditor::UniqueAssetName(
-			FString::Printf(TEXT("SM_%s_%d"), *Out.ClassName, ClassCount.FindOrAdd(Out.ClassName)++), Import.UsedNames);
-		if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry, Out.bInvisible))
-		{
-			Out.Mesh = Map->Meshes.Add(Mesh);
-		}
-	}
-
+	BuildAssets(Import, Level);
 	Map->AssetImportData->Update(Filename);
 	Map->MarkPackageDirty();
 	LibQuakeEditor::NotifyIfReported();

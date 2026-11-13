@@ -218,3 +218,40 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeBspImportTest, "LibQuake.Editor.ImportBsp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeBspImportTest::RunTest(const FString& Parameters)
+{
+	bool bCanceled = false;
+	UQuakeMap* Map = Cast<UQuakeMap>(NewObject<UQuakeMapFactory>()->FactoryCreateFile(UQuakeMap::StaticClass(),
+		CreatePackage(TEXT("/Game/LibQuakeTests/lightstyles")), TEXT("lightstyles"), RF_Public | RF_Standalone,
+		TestFile(TEXT("lightstyles.bsp")), nullptr, GWarn, bCanceled));
+	if (!TestNotNull(TEXT("bsp imports"), Map))
+	{
+		return false;
+	}
+
+	TestTrue(TEXT("bsp has meshes"), Map->Meshes.Num() > 0);
+	TestTrue(TEXT("bsp has entities"), Map->Entities.Num() > 1);
+	int32 Textured = 0;
+	for (const UStaticMesh* Mesh : Map->Meshes)
+	{
+		TestEqual(TEXT("a bsp mesh is its own collision"), Mesh->GetBodySetup()->CollisionTraceFlag.GetValue(),
+			CTF_UseComplexAsSimple);
+		for (const FStaticMaterial& Material : Mesh->GetStaticMaterials())
+		{
+			UTexture* Albedo = nullptr;
+			if (Material.MaterialInterface && Material.MaterialInterface->GetTextureParameterValue(
+				FHashedMaterialParameterInfo(TEXT("Albedo")), Albedo) && Albedo)
+			{
+				TestTrue(TEXT("textures come from the bsp"),
+					Albedo->GetPathName().StartsWith(TEXT("/Game/LibQuakeTests/lightstyles_Generated/T_")));
+				Textured++;
+			}
+		}
+	}
+	TestTrue(TEXT("materials have the bsp textures"), Textured > 0);
+	return true;
+}

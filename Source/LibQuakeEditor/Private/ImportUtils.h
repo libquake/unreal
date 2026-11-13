@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 class UPackage;
+class UTexture2D;
 
 namespace LibQuakeEditor
 {
@@ -17,6 +18,10 @@ namespace LibQuakeEditor
 		bOutCreated = Asset == nullptr;
 		return bOutCreated ? NewObject<T>(Package, *Name, RF_Public | RF_Standalone | RF_Transactional) : Asset;
 	}
+
+	/** Writes RGBA pixels (rows top to bottom) as a texture asset, point filtered and uncompressed like in Quake. */
+	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
+		const TArray<uint8>& Rgba);
 
 	/** Asset and package name for a Quake name, which may contain characters assets cannot have ('*', '{'). */
 	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used);

@@ -59,7 +59,7 @@ struct LIBQUAKE_API FQuakeMapEntity
 };
 
 /**
- * An imported .map file with a static mesh per brush entity and its entities. Placed the first time, the map becomes
+ * An imported .map or .bsp file with a static mesh per brush entity and its entities. Placed the first time, the map becomes
  * a level that later placements reuse as Level Instances. The .map stays the source: everything in Generated is
  * rebuilt on every reimport.
  */

@@ -1,6 +1,5 @@
 #include "QuakeWadFactory.h"
 
-#include "AssetRegistry/AssetRegistryModule.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Engine/Texture2D.h"
 #include "ImportUtils.h"
@@ -8,40 +7,6 @@
 #include "Misc/PackageName.h"
 #include "QuakeWad.h"
 #include "UObject/Package.h"
-
-namespace
-{
-	/** Point filtered and uncompressed, so the pixels stay as they are in the wad. */
-	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
-		const TArray<uint8>& Rgba)
-	{
-		UPackage* Package = LibQuakeEditor::FindOrCreatePackage(Folder / Name);
-		bool bCreated = false;
-		UTexture2D* Texture = LibQuakeEditor::FindOrCreateAsset<UTexture2D>(Package, Name, bCreated);
-		if (!bCreated)
-		{
-			Texture->PreEditChange(nullptr);
-		}
-
-		TArray<uint8> Bgra = Rgba;
-		for (int32 i = 0; i + 3 < Bgra.Num(); i += 4)
-		{
-			Swap(Bgra[i], Bgra[i + 2]);
-		}
-		Texture->Source.Init(Width, Height, 1, 1, TSF_BGRA8, Bgra.GetData());
-		Texture->SRGB = true;
-		Texture->Filter = TF_Nearest;
-		Texture->CompressionNone = true;
-		Texture->PostEditChange();
-
-		if (bCreated)
-		{
-			FAssetRegistryModule::AssetCreated(Texture);
-		}
-		Package->MarkPackageDirty();
-		return Texture;
-	}
-}
 
 UQuakeWadFactory::UQuakeWadFactory()
 {
@@ -120,15 +85,15 @@ bool UQuakeWadFactory::ImportWad(UQuakeWad* Wad, const FString& Filename)
 		FQuakeWadTexture& Entry = Wad->Textures.AddDefaulted_GetRef();
 		Entry.Name = Source.Name;
 		Entry.bAlpha = Source.bAlpha;
-		Entry.Texture = WriteTexture(Folder, Name, Source.Width, Source.Height, Source.Rgba);
+		Entry.Texture = LibQuakeEditor::WriteTexture(Folder, Name, Source.Width, Source.Height, Source.Rgba);
 		if (!Source.Emission.IsEmpty())
 		{
-			Entry.Emission = WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_emission"), Used), Source.Width,
+			Entry.Emission = LibQuakeEditor::WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_emission"), Used), Source.Width,
 				Source.Height, Source.Emission);
 		}
 		if (!Source.SkyFront.IsEmpty())
 		{
-			Entry.SkyFront = WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_front"), Used), Source.Width,
+			Entry.SkyFront = LibQuakeEditor::WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_front"), Used), Source.Width,
 				Source.Height, Source.SkyFront);
 		}
 	}

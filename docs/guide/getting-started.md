@@ -20,6 +20,11 @@ the map's `wad` key first, and writes to `<map>_Generated`:
 Import the wads first. Textures that are missing are reported in Window > Message Log > LibQuake, their faces are
 plain white.
 
+## Bsp files
+
+A compiled `.bsp` is imported the same way. It brings its textures, they are written as `T_<texture>` next to the
+meshes, no wad needed. A bsp has no brush hulls, its meshes are their own collision.
+
 ## Placing
 
 Right click the map > **Place in Level**. The first time, the meshes, lights and entities are spawned and handed to

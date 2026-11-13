@@ -9,9 +9,10 @@
 class UQuakeMap;
 
 /**
- * Imports .map files as a UQuakeMap with a static mesh per brush entity, collision from the brush hulls. Textures
- * come from the imported wads, the ones the map names first. Meshes and material instances go to "<map>_Generated",
- * a reimport updates them in place. A map libquake cannot read leaves everything as it was and reports to the
+ * Imports .map and .bsp files as a UQuakeMap with a static mesh per brush entity. For a .map the textures come from
+ * the imported wads, the ones the map names first, and the collision from the brush hulls. A .bsp brings its
+ * textures, its meshes are their own collision. Meshes, material instances and bsp textures go to "<map>_Generated",
+ * a reimport updates them in place. A file libquake cannot read leaves everything as it was and reports to the
  * LibQuake message log.
  */
 UCLASS()

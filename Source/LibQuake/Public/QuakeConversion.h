@@ -33,12 +33,12 @@ namespace LibQuake
 	}
 
 	/**
-	 * The visible surfaces of an entity, one polygon group per texture with the texture name as material slot.
-	 * Tool surfaces (clip, skip, ...) are left out. UV0 is the texture in repeats, UV1 the lightmap. Returns false
-	 * if nothing is visible.
+	 * The surfaces of an entity of one type, one polygon group per texture with the texture name as material slot.
+	 * SOLID are the visible ones, CLIP the shape of triggers and clip brushes in a bsp, which has no brush hulls.
+	 * UV0 is the texture in repeats, UV1 the lightmap. Returns false if the entity has no such surfaces.
 	 */
 	LIBQUAKE_API bool BuildMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale,
-		FMeshDescription& OutMesh);
+		FMeshDescription& OutMesh, quakelib::SurfaceType Type = quakelib::SurfaceType::SOLID);
 
 	/**
 	 * The brush hulls as one mesh, for brush entities without visible faces like triggers: they need a shape for

@@ -22,6 +22,9 @@ Every brush is convex, the plugin uses the brush hulls as the simple collision o
 element per brush, and traces against them as well (Use Simple Collision As Complex). Clip brushes block like
 walls, liquids are left out of the collision.
 
+A bsp has no brush hulls. Its meshes collide with their own triangles (Use Complex Collision As Simple), triggers
+with their clip faces.
+
 ## Reimport
 
 A reimport updates the meshes and material instances in place, every placed instance shows the new geometry.

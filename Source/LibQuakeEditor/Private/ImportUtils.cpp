@@ -1,5 +1,7 @@
 #include "ImportUtils.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "Engine/Texture2D.h"
 #include "LibQuakeEditorModule.h"
 #include "Logging/MessageLog.h"
 #include "Misc/PackageName.h"
@@ -22,6 +24,36 @@ namespace LibQuakeEditor
 			return LoadPackage(nullptr, *PackageName, LOAD_None);
 		}
 		return CreatePackage(*PackageName);
+	}
+
+	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
+		const TArray<uint8>& Rgba)
+	{
+		UPackage* Package = FindOrCreatePackage(Folder / Name);
+		bool bCreated = false;
+		UTexture2D* Texture = FindOrCreateAsset<UTexture2D>(Package, Name, bCreated);
+		if (!bCreated)
+		{
+			Texture->PreEditChange(nullptr);
+		}
+
+		TArray<uint8> Bgra = Rgba;
+		for (int32 i = 0; i + 3 < Bgra.Num(); i += 4)
+		{
+			Swap(Bgra[i], Bgra[i + 2]);
+		}
+		Texture->Source.Init(Width, Height, 1, 1, TSF_BGRA8, Bgra.GetData());
+		Texture->SRGB = true;
+		Texture->Filter = TF_Nearest;
+		Texture->CompressionNone = true;
+		Texture->PostEditChange();
+
+		if (bCreated)
+		{
+			FAssetRegistryModule::AssetCreated(Texture);
+		}
+		Package->MarkPackageDirty();
+		return Texture;
 	}
 
 	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used)
