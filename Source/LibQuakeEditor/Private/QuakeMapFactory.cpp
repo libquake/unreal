@@ -19,6 +19,7 @@ namespace
 {
 	const TCHAR* SurfaceMaterial = TEXT("/LibQuake/Materials/M_Quake.M_Quake");
 	const TCHAR* MaskedMaterial = TEXT("/LibQuake/Materials/M_QuakeMasked.M_QuakeMasked");
+	const TCHAR* SkyMaterial = TEXT("/LibQuake/Materials/M_QuakeSky.M_QuakeSky");
 
 	FString ToFString(const std::string& Value)
 	{
@@ -113,6 +114,7 @@ namespace
 		FString Folder;
 		FWadLookup* Wads = nullptr;
 		TMap<FString, UMaterialInterface*> Materials;
+		TSet<FString> SkyTextures;
 		TSet<FString> UsedNames;
 
 		template <typename T>
@@ -136,15 +138,26 @@ namespace
 			LibQuakeEditor::ReportWarning(Import.Filename, FString::Printf(
 				TEXT("texture '%s' not found in the imported wads"), *TextureName));
 		}
+		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
 		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
+		const TCHAR* Parent = bSky ? SkyMaterial : bAlpha ? MaskedMaterial : SurfaceMaterial;
+		if (bSky)
+		{
+			Import.SkyTextures.Add(TextureName);
+		}
 
 		bool bCreated = false;
 		UMaterialInstanceConstant* Material = Import.Asset<UMaterialInstanceConstant>(
 			LibQuakeEditor::UniqueAssetName(TEXT("MI_") + TextureName, Import.UsedNames), bCreated);
 		Material->PreEditChange(nullptr);
-		Material->SetParentEditorOnly(LoadObject<UMaterialInterface>(nullptr, bAlpha ? MaskedMaterial : SurfaceMaterial));
+		Material->SetParentEditorOnly(LoadObject<UMaterialInterface>(nullptr, Parent));
 		Material->ClearParameterValuesEditorOnly();
-		if (Texture)
+		if (Texture && bSky)
+		{
+			Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("SkyBack")), Texture->Texture);
+			Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("SkyFront")), Texture->SkyFront);
+		}
+		else if (Texture)
 		{
 			Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Albedo")), Texture->Texture);
 			if (Texture->Emission)
@@ -232,6 +245,14 @@ namespace
 
 		Mesh->CreateMeshDescription(0, MoveTemp(Description));
 		Mesh->CommitMeshDescription(0);
+
+		// sky is an opening in Quake, it must not keep the sun out when Unreal bakes the light
+		for (int32 Section = 0; Section < Materials.Num(); Section++)
+		{
+			FMeshSectionInfo Info = Mesh->GetSectionInfoMap().Get(0, Section);
+			Info.bCastShadow = !Import.SkyTextures.Contains(Materials[Section].MaterialSlotName.ToString());
+			Mesh->GetSectionInfoMap().Set(0, Section, Info);
+		}
 
 		// brush hulls as simple collision, they are convex already and exact
 		Mesh->CreateBodySetup();

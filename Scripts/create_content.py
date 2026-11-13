@@ -3,7 +3,8 @@ enabled, from the plugin folder:
 
     UnrealEditor-Cmd <project>.uproject -run=pythonscript -script="$PWD/Scripts/create_content.py"
 
-Existing materials are replaced, so the script is the source of truth for them.
+Existing materials keep their asset but get rebuilt from scratch, so the script is the source of truth for them
+and instances of them stay valid.
 """
 
 import unreal
@@ -13,12 +14,17 @@ lib = unreal.MaterialEditingLibrary
 assets = unreal.EditorAssetLibrary
 
 
-def new_material(name):
-    path = f"{FOLDER}/{name}"
-    if assets.does_asset_exist(path):
-        assets.delete_asset(path)
-    tools = unreal.AssetToolsHelpers.get_asset_tools()
-    return tools.create_asset(name, FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+def new_material(name, shading_model, blend_mode):
+    # loaded directly, the asset registry may not have scanned the plugin yet when this runs as a commandlet
+    material = unreal.load_asset(f"{FOLDER}/{name}")
+    if material:
+        lib.delete_all_material_expressions(material)
+    else:
+        tools = unreal.AssetToolsHelpers.get_asset_tools()
+        material = tools.create_asset(name, FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+    material.set_editor_property("shading_model", shading_model)
+    material.set_editor_property("blend_mode", blend_mode)
+    return material
 
 
 def texture_parameter(material, name, default, x, y):
@@ -36,7 +42,8 @@ def constant(material, value, x, y):
 
 def quake_surface(name, masked):
     """Lit surface: Albedo as base color, Emissive (the fullbright pixels) on top, matte like Quake."""
-    material = new_material(name)
+    blend_mode = unreal.BlendMode.BLEND_MASKED if masked else unreal.BlendMode.BLEND_OPAQUE
+    material = new_material(name, unreal.MaterialShadingModel.MSM_DEFAULT_LIT, blend_mode)
     albedo = texture_parameter(material, "Albedo", "/Engine/EngineResources/WhiteSquareTexture", -600, -200)
     emissive = texture_parameter(material, "Emissive", "/Engine/EngineResources/Black", -600, 100)
 
@@ -53,8 +60,50 @@ def quake_surface(name, masked):
     lib.connect_material_property(constant(material, 0.2, -250, 500), "", unreal.MaterialProperty.MP_SPECULAR)
 
     if masked:
-        material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
         lib.connect_material_property(albedo, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
+
+    lib.recompile_material(material)
+    assets.save_loaded_asset(material)
+
+
+def quake_sky():
+    """Unlit sky: two layers projected along the view direction like Quake's, the back one scrolling at 8 units
+    per second and the clouds (SkyFront, alpha 0 where the back shows) at 16."""
+    material = new_material("M_QuakeSky", unreal.MaterialShadingModel.MSM_UNLIT, unreal.BlendMode.BLEND_OPAQUE)
+
+    # Quake normalizes the view direction after squashing z, so the direction alone is enough: no world positions
+    view = lib.create_material_expression(material, unreal.MaterialExpressionCameraVectorWS, -1100, 0)
+    time = lib.create_material_expression(material, unreal.MaterialExpressionTime, -1100, 200)
+
+    layers = []
+    for index, speed in enumerate((8.0, 16.0)):
+        uv = lib.create_material_expression(material, unreal.MaterialExpressionCustom, -800, index * 300)
+        uv.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT2)
+        uv.set_editor_property("code", (
+            "float3 dir = -ToCamera;\n"
+            "dir.z *= 3;\n"
+            "dir *= 6 * 63 / length(dir);\n"
+            f"return (Time * {speed} + dir.xy) / 128;"))
+        inputs = []
+        for input_name in ("ToCamera", "Time"):
+            custom_input = unreal.CustomInput()
+            custom_input.set_editor_property("input_name", input_name)
+            inputs.append(custom_input)
+        uv.set_editor_property("inputs", inputs)
+        lib.connect_material_expressions(view, "", uv, "ToCamera")
+        lib.connect_material_expressions(time, "", uv, "Time")
+        name = ("SkyBack", "SkyFront")[index]
+        default = ("/Engine/EngineResources/WhiteSquareTexture", "/Engine/EngineResources/Black")[index]
+        layer = texture_parameter(material, name, default, -500, index * 300)
+        lib.connect_material_expressions(uv, "", layer, "UVs")
+        layers.append(layer)
+
+    back, front = layers
+    blend = lib.create_material_expression(material, unreal.MaterialExpressionLinearInterpolate, -200, 150)
+    lib.connect_material_expressions(back, "RGB", blend, "A")
+    lib.connect_material_expressions(front, "RGB", blend, "B")
+    lib.connect_material_expressions(front, "A", blend, "Alpha")
+    lib.connect_material_property(blend, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
     lib.recompile_material(material)
     assets.save_loaded_asset(material)
@@ -62,3 +111,4 @@ def quake_surface(name, masked):
 
 quake_surface("M_Quake", masked=False)
 quake_surface("M_QuakeMasked", masked=True)
+quake_sky()

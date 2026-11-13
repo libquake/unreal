@@ -81,6 +81,23 @@ bool FQuakeMapImportTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	bool bSkyFound = false;
+	for (const UStaticMesh* Mesh : Map->Meshes)
+	{
+		const TArray<FStaticMaterial>& Materials = Mesh->GetStaticMaterials();
+		for (int32 Section = 0; Section < Materials.Num(); Section++)
+		{
+			const UMaterialInterface* Material = Materials[Section].MaterialInterface;
+			if (!Material || Material->GetMaterial()->GetName() != TEXT("M_QuakeSky"))
+			{
+				continue;
+			}
+			bSkyFound = true;
+			TestFalse(TEXT("sky casts no shadow"), Mesh->GetSectionInfoMap().Get(0, Section).bCastShadow);
+		}
+	}
+	TestTrue(TEXT("sky1 gets the sky material"), bSkyFound);
+
 	const TArray<TObjectPtr<UStaticMesh>> Before = Map->Meshes;
 	TestEqual(TEXT("reimport succeeds"), Factory->Reimport(Map), EReimportResult::Succeeded);
 	TestTrue(TEXT("reimport keeps the meshes"), Map->Meshes == Before);
