@@ -1,7 +1,9 @@
 # Lighting
 
-Maps are lit by Unreal. The lights of the map become static Unreal lights, they show after a lighting build
-(Build > Build Lighting Only). For Lumen without a build, set them to Movable.
+Maps are lit by Unreal. The lights of the map become Unreal lights with the map's `LightMobility`, Static by
+default: they show after a lighting build (Build > Build Lighting Only). For Lumen without a build, set it to
+Movable in the [map settings](../reference/map-settings.md), the next reimport or Rebuild applies it to the
+placed maps. New maps start with `DefaultLightMobility` of the [project settings](../reference/project-settings.md).
 
 | Map | Unreal |
 |---|---|
@@ -16,7 +18,10 @@ units. Unreal fades by (1 - d²/r²)^exponent without inverse square falloff, an
 The intensity is `light · 0.5 / 128 · π · 1.2` (unitless), the sun gets the same in lux from `_sunlight`. A lit
 surface shows albedo / π times the light in Unreal, and the factor 1.2 matches a manual exposure with EV100 0
 (a post process volume with Metering Mode Manual, Apply Physical Camera Exposure off and Exposure Compensation
-0). Exposure, ambient light and grading are left to the level, the plugin does not touch them.
+0). Exposure, ambient light and grading are left to the level, the plugin does not touch them on its own.
+
+Tools > LibQuake > **Add Quake Exposure** puts such a volume into the current level, unbound and labeled
+`QuakeExposure`. It belongs to the level, not to a map: change or delete it like any other volume.
 
 Before a lighting build the editor shows static lights as a preview without shadows.
 

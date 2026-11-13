@@ -45,7 +45,9 @@ them. `Rebuild` (editor only) brings them in line with the map.
 ## UQuakeEntityClasses
 
 Data asset with `TMap<FString, TSoftClassPtr<AActor>> Classes`, entity class name (or prefix ending in `*`) to
-actor class. `Resolve` looks up a map's classes, then the project settings (`ULibQuakeSettings::EntityClasses`).
+actor class, an entry without a class leaves the entity out. `Resolve` looks up a map's classes, then the project
+settings (`ULibQuakeSettings::EntityClasses`). `LibQuake::FindByName` (`QuakeNameTable.h`) is the lookup by name
+or prefix the class and material tables share.
 
 ## UQuakeWad
 

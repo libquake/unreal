@@ -16,6 +16,17 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 Brush entities without visible faces, like triggers, get a mesh made of their brush hulls. It is never drawn, it
 is there for collision and overlaps.
 
+## Materials
+
+Each texture gets a material instance `MI_<texture>` of the project's surface, masked or sky material, see the
+[project settings](../reference/project-settings.md). Artists who want their own look set their own parent
+materials there, with the same parameters.
+
+A material table replaces the instance for some textures, e.g. `*water*` with a water material or `sky*` with a
+sky of the game. Names ending in `*` are prefixes as for the entity classes. The `Materials` of the
+[map settings](../reference/map-settings.md) come first, then the ones of the project settings. A reimport
+applies changes to the tables.
+
 ## Mesh libraries
 
 A map can be a collection of meshes instead of a level, e.g. a map full of props. Set the worldspawn key

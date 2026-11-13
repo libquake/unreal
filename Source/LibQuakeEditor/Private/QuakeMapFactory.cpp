@@ -12,16 +12,13 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "QuakeConversion.h"
 #include "QuakeMap.h"
+#include "QuakeNameTable.h"
 #include "QuakeWad.h"
 #include "StaticMeshAttributes.h"
 #include "UObject/Package.h"
 
 namespace
 {
-	const TCHAR* SurfaceMaterial = TEXT("/LibQuake/Materials/M_Quake.M_Quake");
-	const TCHAR* MaskedMaterial = TEXT("/LibQuake/Materials/M_QuakeMasked.M_QuakeMasked");
-	const TCHAR* SkyMaterial = TEXT("/LibQuake/Materials/M_QuakeSky.M_QuakeSky");
-
 	FString ToFString(const std::string& Value)
 	{
 		return UTF8_TO_TCHAR(Value.c_str());
@@ -162,9 +159,21 @@ namespace
 		return GetDefault<ULibQuakeSettings>()->MissingTexture.LoadSynchronous();
 	}
 
+	/** The material of the map's or the project's material table for a texture, null if neither has one. */
+	UMaterialInterface* MaterialOverride(const UQuakeMap* Map, const FString& TextureName)
+	{
+		const TSoftObjectPtr<UMaterialInterface>* Entry = LibQuake::FindByName(Map->Settings.Materials, TextureName);
+		if (!Entry)
+		{
+			Entry = LibQuake::FindByName(GetDefault<ULibQuakeSettings>()->Materials, TextureName);
+		}
+		return Entry ? Entry->LoadSynchronous() : nullptr;
+	}
+
 	/**
-	 * The material instance for a texture: sky, masked ('{') or the plain surface material with the layers of the
-	 * texture. A texture that is in no wad gets the missing texture as albedo.
+	 * The material for a texture: the one of the material tables, or a material instance of the project's sky,
+	 * masked ('{') or surface material with the layers of the texture. A texture that is in no wad gets the missing
+	 * texture as albedo.
 	 */
 	UMaterialInterface* MaterialFor(FImport& Import, const FString& TextureName)
 	{
@@ -174,25 +183,34 @@ namespace
 		}
 
 		const FQuakeWadTexture* Texture = Import.FindTexture(TextureName);
+		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
+		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
+		if (bSky)
+		{
+			Import.SkyTextures.Add(TextureName);
+		}
+
+		if (UMaterialInterface* Override = MaterialOverride(Import.Map, TextureName))
+		{
+			Import.Materials.Add(TextureName, Override);
+			return Override;
+		}
+
 		if (!Texture)
 		{
 			LibQuakeEditor::ReportWarning(Import.Filename,
 				FString::Printf(TEXT("texture '%s' not found"), *TextureName));
 		}
 
-		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
-		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
-		const TCHAR* Parent = bSky ? SkyMaterial : bAlpha ? MaskedMaterial : SurfaceMaterial;
-		if (bSky)
-		{
-			Import.SkyTextures.Add(TextureName);
-		}
+		const ULibQuakeSettings* Settings = GetDefault<ULibQuakeSettings>();
+		const TSoftObjectPtr<UMaterialInterface>& Parent =
+			bSky ? Settings->SkyMaterial : bAlpha ? Settings->MaskedMaterial : Settings->SurfaceMaterial;
 
 		bool bCreated = false;
 		UMaterialInstanceConstant* Material = Import.Asset<UMaterialInstanceConstant>(
 			LibQuakeEditor::UniqueAssetName(TEXT("MI_") + TextureName, Import.UsedNames), bCreated);
 		Material->PreEditChange(nullptr);
-		Material->SetParentEditorOnly(LoadObject<UMaterialInterface>(nullptr, Parent));
+		Material->SetParentEditorOnly(Parent.LoadSynchronous());
 		Material->ClearParameterValuesEditorOnly();
 
 		const auto SetTexture = [Material](const TCHAR* Parameter, UTexture* Value)
@@ -508,6 +526,7 @@ UObject* UQuakeMapFactory::FactoryCreateFile(UClass* InClass, UObject* InParent,
 	if (!Map)
 	{
 		Map = NewObject<UQuakeMap>(InParent, InClass, InName, Flags | RF_Transactional);
+		GetDefault<ULibQuakeSettings>()->ApplyDefaults(Map->Settings);
 	}
 	return ImportMap(Map, Filename) ? Map : nullptr;
 }

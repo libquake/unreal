@@ -1,11 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/EngineTypes.h"
 #include "UObject/Object.h"
 
 #include "QuakeMap.generated.h"
 
 class UAssetImportData;
+class UMaterialInterface;
 class UQuakeEntityClasses;
 class UStaticMesh;
 
@@ -21,6 +23,7 @@ enum class EQuakePivot : uint8
 	BottomCenter,
 };
 
+/** Settings of one map. A new import starts with the defaults of the project settings (ULibQuakeSettings). */
 USTRUCT(BlueprintType)
 struct LIBQUAKE_API FQuakeMapSettings
 {
@@ -51,6 +54,17 @@ struct LIBQUAKE_API FQuakeMapSettings
 	/** Quake units per lightmap texel. 16 matches Quake, smaller values give sharper shadows. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))
 	float LuxelSize = 16.0f;
+
+	/** Mobility of the lights of placed maps. Static for baked light, Movable for Lumen. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting")
+	TEnumAsByte<EComponentMobility::Type> LightMobility = EComponentMobility::Static;
+
+	/**
+	 * Materials used as they are instead of a material instance, by texture name, names ending in '*' are prefixes.
+	 * They come before the ones in the project settings.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Materials")
+	TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials;
 
 	/** Actor classes for entity classes of this map, they come before the ones in the project settings. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Entities")

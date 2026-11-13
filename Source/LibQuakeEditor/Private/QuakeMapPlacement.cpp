@@ -1,6 +1,8 @@
 #include "QuakeMapPlacement.h"
 
+#include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
@@ -37,22 +39,32 @@ namespace
 		UStaticMesh* Mesh = nullptr;
 	};
 
-	/** Every actor the map should have, in map order. */
+	/** Every actor the map should have, in map order. Entities mapped to no class are left out. */
 	TArray<FEntitySpec> MakeSpecs(const UQuakeMap* Map)
 	{
 		TArray<FEntitySpec> Specs;
 		TMap<FString, int32> ClassCount;
 		for (const FQuakeMapEntity& Entity : Map->Entities)
 		{
-			FEntitySpec& Spec = Specs.AddDefaulted_GetRef();
-			Spec.Id = FString::Printf(TEXT("%s_%d"), *Entity.ClassName, ClassCount.FindOrAdd(Entity.ClassName)++);
-			Spec.Transform = Entity.Transform;
-			Spec.Entity = &Entity;
-			Spec.Mesh = Map->Meshes.IsValidIndex(Entity.Mesh) ? Map->Meshes[Entity.Mesh].Get() : nullptr;
-			Spec.Class = UQuakeEntityClasses::Resolve(Map->Settings.EntityClasses, Entity.ClassName);
-			if (!Spec.Class)
+			// counted before skipping, so the ids of the other entities stay the same when an entry is added
+			const FString Id =
+				FString::Printf(TEXT("%s_%d"), *Entity.ClassName, ClassCount.FindOrAdd(Entity.ClassName)++);
+			UStaticMesh* Mesh = Map->Meshes.IsValidIndex(Entity.Mesh) ? Map->Meshes[Entity.Mesh].Get() : nullptr;
+
+			UClass* Class = nullptr;
+			if (!UQuakeEntityClasses::Resolve(Map->Settings.EntityClasses, Entity.ClassName, Class))
 			{
-				Spec.Class = Spec.Mesh ? AStaticMeshActor::StaticClass() : AQuakePointEntity::StaticClass();
+				Class = Mesh ? AStaticMeshActor::StaticClass() : AQuakePointEntity::StaticClass();
+			}
+
+			if (Class)
+			{
+				FEntitySpec& Spec = Specs.AddDefaulted_GetRef();
+				Spec.Id = Id;
+				Spec.Class = Class;
+				Spec.Transform = Entity.Transform;
+				Spec.Entity = &Entity;
+				Spec.Mesh = Mesh;
 			}
 
 			if (Entity.ClassName == TEXT("worldspawn") && FCString::Atof(*Entity.Keys.FindRef(TEXT("_sunlight"))) > 0)
@@ -172,6 +184,13 @@ namespace
 		Keys->ClassName = Spec.bSun ? FString() : Spec.Entity->ClassName;
 		Keys->Keys = Spec.Entity->Keys;
 
+		TInlineComponentArray<ULightComponent*> Lights(Actor);
+		for (ULightComponent* Light : Lights)
+		{
+			Light->Modify();
+			Light->SetMobility(Map->Settings.LightMobility);
+		}
+
 		if (Actor->Implements<UQuakeEntity>())
 		{
 			// without the guard Unreal drops events on actors of the editor world
@@ -183,6 +202,28 @@ namespace
 
 namespace LibQuakeEditor
 {
+	APostProcessVolume* AddQuakeExposure(UWorld* World)
+	{
+		FActorSpawnParameters Parameters;
+		Parameters.OverrideLevel = World->GetCurrentLevel();
+		APostProcessVolume* Volume = World->SpawnActor<APostProcessVolume>(Parameters);
+		if (!Volume)
+		{
+			return nullptr;
+		}
+
+		Volume->SetActorLabel(TEXT("QuakeExposure"));
+		Volume->bUnbound = true;
+		FPostProcessSettings& Settings = Volume->Settings;
+		Settings.bOverride_AutoExposureMethod = true;
+		Settings.AutoExposureMethod = AEM_Manual;
+		Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+		Settings.AutoExposureApplyPhysicalCameraExposure = false;
+		Settings.bOverride_AutoExposureBias = true;
+		Settings.AutoExposureBias = 0.0f;
+		return Volume;
+	}
+
 	AQuakeMapActor* PlaceMap(UQuakeMap* Map, UWorld* World, const FTransform& Transform)
 	{
 		FActorSpawnParameters Parameters;

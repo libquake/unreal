@@ -1,35 +1,20 @@
 #include "QuakeEntityClasses.h"
 
 #include "LibQuakeSettings.h"
+#include "QuakeNameTable.h"
 
-TSoftClassPtr<AActor> UQuakeEntityClasses::Find(const TMap<FString, TSoftClassPtr<AActor>>& Classes,
-	const FString& ClassName)
+bool UQuakeEntityClasses::Resolve(const UQuakeEntityClasses* MapClasses, const FString& ClassName, UClass*& OutClass)
 {
-	if (const TSoftClassPtr<AActor>* Exact = Classes.Find(ClassName))
+	const TSoftClassPtr<AActor>* Entry = MapClasses ? LibQuake::FindByName(MapClasses->Classes, ClassName) : nullptr;
+	if (!Entry)
 	{
-		return *Exact;
+		Entry = LibQuake::FindByName(GetDefault<ULibQuakeSettings>()->EntityClasses, ClassName);
+	}
+	if (!Entry)
+	{
+		return false;
 	}
 
-	TSoftClassPtr<AActor> Best;
-	int32 BestLength = -1;
-	for (const auto& [Name, Class] : Classes)
-	{
-		const int32 Length = Name.Len() - 1;
-		if (Name.EndsWith(TEXT("*")) && Length > BestLength && ClassName.StartsWith(Name.LeftChop(1)))
-		{
-			Best = Class;
-			BestLength = Length;
-		}
-	}
-	return Best;
-}
-
-UClass* UQuakeEntityClasses::Resolve(const UQuakeEntityClasses* MapClasses, const FString& ClassName)
-{
-	TSoftClassPtr<AActor> Class = MapClasses ? Find(MapClasses->Classes, ClassName) : nullptr;
-	if (Class.IsNull())
-	{
-		Class = Find(GetDefault<ULibQuakeSettings>()->EntityClasses, ClassName);
-	}
-	return Class.IsNull() ? nullptr : Class.LoadSynchronous();
+	OutClass = Entry->IsNull() ? nullptr : Entry->LoadSynchronous();
+	return true;
 }

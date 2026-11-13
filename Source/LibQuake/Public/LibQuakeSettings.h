@@ -2,9 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "Engine/EngineTypes.h"
+#include "QuakeMap.h"
 
 #include "LibQuakeSettings.generated.h"
 
+class UMaterialInterface;
 class UTexture2D;
 
 /** Project Settings > Plugins > LibQuake. */
@@ -18,12 +21,51 @@ public:
 
 	virtual FName GetCategoryName() const override { return TEXT("Plugins"); }
 
+	/** Writes the defaults for new maps into Settings, a newly imported map starts with them. */
+	void ApplyDefaults(FQuakeMapSettings& Settings) const;
+
+	// A newly imported map starts with these, after that its own settings count.
+
+	UPROPERTY(Config, EditAnywhere, Category = "New Maps", meta = (ClampMin = "0.01"))
+	float DefaultScale = 3.125f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "New Maps")
+	bool bDefaultCSG = true;
+
+	UPROPERTY(Config, EditAnywhere, Category = "New Maps")
+	EQuakePivot DefaultPivot = EQuakePivot::BottomCenter;
+
+	UPROPERTY(Config, EditAnywhere, Category = "New Maps", meta = (ClampMin = "1"))
+	float DefaultLuxelSize = 16.0f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "New Maps")
+	TEnumAsByte<EComponentMobility::Type> DefaultLightMobility = EComponentMobility::Static;
+
 	/**
-	 * Actor classes for entity classes in every map, see UQuakeEntityClasses for the names. A map's own
-	 * EntityClasses come first. Comes with the plugin's lights and player start.
+	 * Actor classes for entity classes in every map, names ending in '*' are prefixes. A map's own EntityClasses
+	 * come first. An entry without a class leaves the entity out. Comes with the plugin's lights and player start.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Entities")
 	TMap<FString, TSoftClassPtr<AActor>> EntityClasses;
+
+	/** Parent of the material instances of plain textures. Needs the texture parameters Albedo and Emissive. */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials")
+	TSoftObjectPtr<UMaterialInterface> SurfaceMaterial;
+
+	/** Parent for '{' textures, transparent where Albedo's alpha is 0. Same parameters as SurfaceMaterial. */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials")
+	TSoftObjectPtr<UMaterialInterface> MaskedMaterial;
+
+	/** Parent for sky textures. Needs the texture parameters SkyBack and SkyFront. */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials")
+	TSoftObjectPtr<UMaterialInterface> SkyMaterial;
+
+	/**
+	 * Materials used as they are instead of a material instance, by texture name, names ending in '*' are prefixes
+	 * ("*water*" for every water texture). A map's own Materials come first.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials")
+	TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials;
 
 	/**
 	 * For faces whose texture is in none of the imported wads, their uvs follow its size. Without one they are

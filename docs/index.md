@@ -33,4 +33,5 @@ The project needs C++, Unreal compiles the plugin and libquake with it.
 
 A placed map is a `Quake Map Actor` with the actors of its entities attached, a reimport updates them.
 
-Start with [Getting started](guide/getting-started.md).
+Start with [Getting started](guide/getting-started.md). The settings are in the
+[project settings](reference/project-settings.md) and the [map settings](reference/map-settings.md).

@@ -19,7 +19,6 @@ void AQuakePointLight::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* En
 	// Unreal's setters ignore static lights once they are registered, the properties are set directly
 	UPointLightComponent* Light = PointLightComponent;
 	Light->Modify();
-	Light->SetMobility(EComponentMobility::Static);
 	Light->bUseInverseSquaredFalloff = false;
 	Light->LightFalloffExponent = 2.0f;
 	Light->IntensityUnits = ELightUnits::Unitless;
@@ -56,7 +55,6 @@ void AQuakeSun::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
 	// like the point light, the properties are set directly
 	UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(GetLightComponent());
 	Light->Modify();
-	Light->SetMobility(EComponentMobility::Static);
 	Light->Intensity = LibQuake::ToUnrealBrightness(Entity->GetFloat(TEXT("_sunlight")));
 	Light->LightColor = Entity->GetColor(TEXT("_sunlight_color")).ToFColor(true);
 	Light->MarkRenderStateDirty();

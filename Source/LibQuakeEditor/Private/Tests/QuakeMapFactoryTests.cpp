@@ -7,12 +7,14 @@
 #include "EditorReimportHandler.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
 #include "Interfaces/IPluginManager.h"
 #include "LibQuakeSettings.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/BodySetup.h"
@@ -23,6 +25,7 @@
 #include "QuakeMapActor.h"
 #include "QuakeMapFactory.h"
 #include "QuakeMapPlacement.h"
+#include "QuakeNameTable.h"
 #include "QuakeTriggerProbe.h"
 #include "QuakeWad.h"
 #include "QuakeWadFactory.h"
@@ -250,17 +253,81 @@ bool FQuakeEntityClassesTest::RunTest(const FString& Parameters)
 	Classes.Add(TEXT("light*"), AQuakePointLight::StaticClass());
 	Classes.Add(TEXT("light_torch*"), AQuakePointEntity::StaticClass());
 	Classes.Add(TEXT("light_torch_small_walltorch"), APlayerStart::StaticClass());
-	TestTrue(TEXT("prefix"),
-		UQuakeEntityClasses::Find(Classes, TEXT("light_fluoro")).Get() == AQuakePointLight::StaticClass());
-	TestTrue(TEXT("the prefix without a suffix"),
-		UQuakeEntityClasses::Find(Classes, TEXT("light")).Get() == AQuakePointLight::StaticClass());
-	TestTrue(TEXT("the longer prefix wins"),
-		UQuakeEntityClasses::Find(Classes, TEXT("light_torch_x")).Get() == AQuakePointEntity::StaticClass());
-	TestTrue(TEXT("an exact name wins"),
-		UQuakeEntityClasses::Find(Classes, TEXT("light_torch_small_walltorch")).Get() == APlayerStart::StaticClass());
-	TestTrue(TEXT("no match"), UQuakeEntityClasses::Find(Classes, TEXT("info_null")).IsNull());
-	TestTrue(TEXT("the project settings bring the lights"),
-		UQuakeEntityClasses::Resolve(nullptr, TEXT("light")) == AQuakePointLight::StaticClass());
+	const auto Find = [&Classes](const TCHAR* Name)
+	{
+		const TSoftClassPtr<AActor>* Entry = LibQuake::FindByName(Classes, Name);
+		return Entry ? Entry->Get() : nullptr;
+	};
+	TestTrue(TEXT("prefix"), Find(TEXT("light_fluoro")) == AQuakePointLight::StaticClass());
+	TestTrue(TEXT("the prefix without a suffix"), Find(TEXT("light")) == AQuakePointLight::StaticClass());
+	TestTrue(TEXT("the longer prefix wins"), Find(TEXT("light_torch_x")) == AQuakePointEntity::StaticClass());
+	TestTrue(TEXT("an exact name wins"), Find(TEXT("light_torch_small_walltorch")) == APlayerStart::StaticClass());
+	TestNull(TEXT("no match"), LibQuake::FindByName(Classes, FString(TEXT("info_null"))));
+
+	UClass* Class = nullptr;
+	TestTrue(TEXT("the project settings have the lights"), UQuakeEntityClasses::Resolve(nullptr, TEXT("light"), Class));
+	TestTrue(TEXT("with the plugin's light"), Class == AQuakePointLight::StaticClass());
+
+	UQuakeEntityClasses* MapClasses = NewObject<UQuakeEntityClasses>();
+	MapClasses->Classes.Add(TEXT("light"), nullptr);
+	TestTrue(TEXT("an empty entry is an entry"), UQuakeEntityClasses::Resolve(MapClasses, TEXT("light"), Class));
+	TestNull(TEXT("without a class"), Class);
+	TestFalse(TEXT("unknown classes have none"), UQuakeEntityClasses::Resolve(MapClasses, TEXT("info_null"), Class));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeSettingsTest, "LibQuake.Editor.Settings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeSettingsTest::RunTest(const FString& Parameters)
+{
+	// a new import starts with the project's defaults
+	ULibQuakeSettings* Settings = GetMutableDefault<ULibQuakeSettings>();
+	const float Scale = Settings->DefaultScale;
+	Settings->DefaultScale = 2.0f;
+	UQuakeMap* Map = ImportTestMap(TEXT("settings_map"), TEXT("trigger.map"));
+	Settings->DefaultScale = Scale;
+	if (!TestNotNull(TEXT("map imports"), Map))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the map has the default scale"), Map->Settings.Scale, 2.0f);
+
+	// a texture in the map's material table gets that material instead of an instance
+	UMaterialInterface* Grid = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial"));
+	Map->Settings.Materials.Add(TEXT("128_blue*"), Grid);
+	TestTrue(TEXT("reimport"), UQuakeMapFactory::ImportMap(Map, TestFile(TEXT("trigger.map"))));
+	const FQuakeMapEntity* Wall = Map->Entities.FindByPredicate(
+		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("func_wall"); });
+	TestTrue(TEXT("the wall's texture uses the table's material"),
+		Map->Meshes[Wall->Mesh]->GetStaticMaterials()[0].MaterialInterface == Grid);
+
+	// lights follow the map's mobility, an empty entry leaves the entity out
+	Map->Settings.LightMobility = EComponentMobility::Movable;
+	UQuakeEntityClasses* Classes = NewObject<UQuakeEntityClasses>();
+	Classes->Classes.Add(TEXT("info_null"), nullptr);
+	Map->Settings.EntityClasses = Classes;
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity);
+	const TArray<AActor*> Actors = MapActor->GetEntityActors();
+	const AActor* const* Sun = Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<AQuakeSun>(); });
+	if (TestNotNull(TEXT("sun"), Sun))
+	{
+		TestEqual(TEXT("lights are movable"), (int32)Cast<ADirectionalLight>(*Sun)->GetLightComponent()->Mobility,
+			(int32)EComponentMobility::Movable);
+	}
+	TestNull(TEXT("info_null is left out"), FindEntity(Actors, TEXT("info_null")));
+	World->EditorDestroyActor(MapActor, true);
+
+	APostProcessVolume* Exposure = LibQuakeEditor::AddQuakeExposure(World);
+	if (TestNotNull(TEXT("exposure volume"), Exposure))
+	{
+		TestTrue(TEXT("for the whole level"), Exposure->bUnbound);
+		TestEqual(TEXT("manual exposure"), Exposure->Settings.AutoExposureMethod.GetValue(), AEM_Manual);
+		TestEqual(TEXT("ev100 0"), Exposure->Settings.AutoExposureBias, 0.0f);
+		World->EditorDestroyActor(Exposure, true);
+	}
 	return true;
 }
 

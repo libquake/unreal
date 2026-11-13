@@ -51,17 +51,43 @@ namespace
 		}
 	}
 
+	/** Tools > LibQuake > Add Quake Exposure: the exposure the lights are calibrated to, selected afterwards. */
+	void AddQuakeExposure(const FToolMenuContext&)
+	{
+		UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+		if (!World)
+		{
+			return;
+		}
+
+		const FScopedTransaction Transaction(LOCTEXT("AddExposure", "Add Quake Exposure"));
+		if (AActor* Volume = LibQuakeEditor::AddQuakeExposure(World))
+		{
+			GEditor->SelectNone(false, true);
+			GEditor->SelectActor(Volume, true, true);
+		}
+	}
+
 	void RegisterMenus()
 	{
-		UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UQuakeMap::StaticClass());
-		FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
-
-		FToolUIAction Action;
-		Action.ExecuteAction = FToolMenuExecuteAction::CreateStatic(&PlaceSelectedMaps);
-		Section.AddMenuEntry("LibQuake_PlaceInLevel", LOCTEXT("PlaceInLevel", "Place in Level"),
+		UToolMenu* AssetMenu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UQuakeMap::StaticClass());
+		FToolUIAction Place;
+		Place.ExecuteAction = FToolMenuExecuteAction::CreateStatic(&PlaceSelectedMaps);
+		AssetMenu->FindOrAddSection("GetAssetActions").AddMenuEntry("LibQuake_PlaceInLevel",
+			LOCTEXT("PlaceInLevel", "Place in Level"),
 			LOCTEXT("PlaceInLevelTooltip", "Places the map at the origin of the level. Dragging it into the viewport "
 				"does the same where it is dropped."),
-			FSlateIcon(), Action);
+			FSlateIcon(), Place);
+
+		FToolUIAction AddExposure;
+		AddExposure.ExecuteAction = FToolMenuExecuteAction::CreateStatic(&AddQuakeExposure);
+		UToolMenu* ToolsMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Tools");
+		ToolsMenu->FindOrAddSection("LibQuake", LOCTEXT("ToolsSection", "LibQuake")).AddMenuEntry(
+			"LibQuake_AddExposure",
+			LOCTEXT("AddExposure", "Add Quake Exposure"),
+			LOCTEXT("AddExposureTooltip", "Adds a post process volume with the manual exposure the lights of Quake "
+				"maps are calibrated to. It belongs to the level, change or delete it like any other volume."),
+			FSlateIcon(), AddExposure);
 	}
 
 	void RebuildMapActor(AQuakeMapActor* MapActor)

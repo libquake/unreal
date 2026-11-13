@@ -20,6 +20,9 @@ A name ending in `*` is a prefix: `light*` covers `light`, `light_fluoro`, `ligh
 An exact name wins over a prefix, a longer prefix over a shorter one. Brush entities mapped to a class get their
 mesh as an extra component `QuakeMesh`.
 
+An entry without a class leaves the entity out, e.g. `info_player_deathmatch` or `ambient_*` when a game has no
+use for them. Brush entities left out keep their mesh asset, they just get no actor.
+
 To change the classes for one map only, create a `Quake Entity Classes` data asset (Miscellaneous > Data Asset)
 and set it as `EntityClasses` in the map's settings. Its entries come before the project's.
 
