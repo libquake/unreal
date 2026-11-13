@@ -4,6 +4,7 @@
 #include "EditorFramework/AssetImportData.h"
 #include "Engine/StaticMesh.h"
 #include "ImportUtils.h"
+#include "LibQuakeSettings.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "MeshDescription.h"
 #include "Misc/PackageName.h"
@@ -126,6 +127,12 @@ namespace
 		}
 	};
 
+	/** The texture of the project settings for textures that are in no wad, null if there is none. */
+	UTexture2D* MissingTexture()
+	{
+		return GetDefault<ULibQuakeSettings>()->MissingTexture.LoadSynchronous();
+	}
+
 	UMaterialInterface* MaterialFor(FImport& Import, const FString& TextureName)
 	{
 		if (UMaterialInterface** Existing = Import.Materials.Find(TextureName))
@@ -134,10 +141,12 @@ namespace
 		}
 
 		const FQuakeWadTexture* Texture = Import.FindTexture(TextureName);
+		UTexture2D* Missing = nullptr;
 		if (!Texture)
 		{
 			LibQuakeEditor::ReportWarning(Import.Filename, FString::Printf(
 				TEXT("texture '%s' not found"), *TextureName));
+			Missing = MissingTexture();
 		}
 		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
 		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
@@ -165,6 +174,10 @@ namespace
 			{
 				Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Emissive")), Texture->Emission);
 			}
+		}
+		else if (Missing && !bSky)
+		{
+			Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Albedo")), Missing);
 		}
 		Material->PostEditChange();
 		if (bCreated)
@@ -344,9 +357,10 @@ namespace
 		Options.textureSize = [&Import](const std::string& Name) -> std::pair<int, int>
 		{
 			// a missing texture gets a size anyway, without one its faces have no uvs and no tangents
-			const FQuakeWadTexture* Texture = Import.FindTexture(ToFString(Name));
-			return Texture && Texture->Texture
-				? std::pair<int, int>(Texture->Texture->Source.GetSizeX(), Texture->Texture->Source.GetSizeY())
+			const FQuakeWadTexture* Found = Import.FindTexture(ToFString(Name));
+			const UTexture2D* Texture = Found ? Found->Texture.Get() : MissingTexture();
+			return Texture
+				? std::pair<int, int>(Texture->Source.GetSizeX(), Texture->Source.GetSizeY())
 				: std::pair<int, int>(64, 64);
 		};
 		return LibQuake::BuildMap(Document, Options, OutLevel, OutError);

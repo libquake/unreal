@@ -5,6 +5,8 @@
 
 #include "LibQuakeSettings.generated.h"
 
+class UTexture2D;
+
 /** Project Settings > Plugins > LibQuake. */
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "LibQuake"))
 class LIBQUAKE_API ULibQuakeSettings : public UDeveloperSettings
@@ -22,4 +24,11 @@ public:
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Entities")
 	TMap<FString, TSoftClassPtr<AActor>> EntityClasses;
+
+	/**
+	 * For faces whose texture is in none of the imported wads, their uvs follow its size. Without one they are
+	 * plain white. Used when a map is imported.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Textures")
+	TSoftObjectPtr<UTexture2D> MissingTexture;
 };

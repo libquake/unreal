@@ -1,11 +1,13 @@
-"""Creates the plugin's base materials in Content/Materials. Run in a project that has the plugin and Python
-enabled, from the plugin folder:
+"""Creates the plugin's base materials in Content/Materials and the texture for missing textures in
+Content/Textures. Run in a project that has the plugin and Python enabled, from the plugin folder:
 
     UnrealEditor-Cmd <project>.uproject -run=pythonscript -script="$PWD/Scripts/create_content.py"
 
 Existing materials keep their asset but get rebuilt from scratch, so the script is the source of truth for them
 and instances of them stay valid.
 """
+
+import os
 
 import unreal
 
@@ -110,6 +112,22 @@ def quake_sky():
     assets.save_loaded_asset(material)
 
 
+def missing_texture():
+    """The grid for faces whose texture is not in any imported wad, see the MissingTexture project setting."""
+    task = unreal.AssetImportTask()
+    task.filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MissingTexture.jpg")
+    task.destination_path = "/LibQuake/Textures"
+    task.destination_name = "T_QuakeMissing"
+    task.replace_existing = True
+    task.automated = True
+    task.save = False
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    texture = unreal.load_asset("/LibQuake/Textures/T_QuakeMissing")
+    texture.set_editor_property("filter", unreal.TextureFilter.TF_NEAREST)
+    assets.save_loaded_asset(texture)
+
+
+missing_texture()
 quake_surface("M_Quake", masked=False)
 quake_surface("M_QuakeMasked", masked=True)
 quake_sky()

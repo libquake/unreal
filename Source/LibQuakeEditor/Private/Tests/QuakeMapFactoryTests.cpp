@@ -12,6 +12,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
 #include "Interfaces/IPluginManager.h"
+#include "LibQuakeSettings.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/BodySetup.h"
@@ -333,6 +334,29 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 	}
 
 	World->EditorDestroyActor(MapActor, true);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeMissingTextureTest, "LibQuake.Editor.MissingTexture",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeMissingTextureTest::RunTest(const FString& Parameters)
+{
+	UQuakeMap* Map = ImportTestMap(TEXT("missing_texture"), TEXT("missing_texture.map"));
+	if (!TestNotNull(TEXT("map imports"), Map) || !TestEqual(TEXT("one mesh"), Map->Meshes.Num(), 1))
+	{
+		return false;
+	}
+	UTexture2D* Missing = GetDefault<ULibQuakeSettings>()->MissingTexture.LoadSynchronous();
+	if (!TestNotNull(TEXT("the plugin brings a texture for missing ones"), Missing))
+	{
+		return false;
+	}
+	UTexture* Albedo = nullptr;
+	const UMaterialInterface* Material = Map->Meshes[0]->GetStaticMaterials()[0].MaterialInterface;
+	TestTrue(TEXT("the material has an albedo"), Material->GetTextureParameterValue(
+		FHashedMaterialParameterInfo(TEXT("Albedo")), Albedo));
+	TestEqual(TEXT("a face without its texture gets the missing texture"), Albedo, (UTexture*)Missing);
 	return true;
 }
 

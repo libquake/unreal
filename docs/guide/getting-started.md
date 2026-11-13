@@ -17,8 +17,9 @@ the map's `wad` key first, and writes to `<map>_Generated`:
 - `SM_<class>_<n>`: a static mesh per brush entity, `SM_worldspawn_0` is the world
 - `MI_<texture>`: a material instance per texture
 
-Import the wads first. Textures that are missing are reported in Window > Message Log > LibQuake, their faces are
-plain white.
+Import the wads first. Textures that are missing are reported in Window > Message Log > LibQuake, their faces
+get a grey grid, `T_QuakeMissing`. Another texture can be set in Project Settings > Plugins > LibQuake >
+Missing Texture, without one the faces are plain white.
 
 ## Bsp files
 

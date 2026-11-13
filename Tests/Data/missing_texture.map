@@ -1,0 +1,12 @@
+// a brush with a texture that is in no wad
+{
+"classname" "worldspawn"
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) no_such_texture 0 0 0 1 1
+( 64 0 0 ) ( 64 0 1 ) ( 64 1 0 ) no_such_texture 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) no_such_texture 0 0 0 1 1
+( 0 64 0 ) ( 1 64 0 ) ( 0 64 1 ) no_such_texture 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) no_such_texture 0 0 0 1 1
+( 0 0 64 ) ( 0 1 64 ) ( 1 0 64 ) no_such_texture 0 0 0 1 1
+}
+}
