@@ -2,6 +2,7 @@
 {
 "classname" "worldspawn"
 "wad" "sky_alpha.wad"
+"_lavaalpha" "0.4"
 {
 ( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) 128_blue_3 0 0 0 1 1
 ( 256 0 0 ) ( 256 0 1 ) ( 256 1 0 ) 128_blue_3 0 0 0 1 1

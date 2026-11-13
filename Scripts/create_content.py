@@ -134,9 +134,10 @@ def scalar_parameter(material, name, value, x, y):
     return node
 
 
-# Quake's turbulence: every texel moves along a sine of the other axis, 8 texels at most, once around in 2 pi seconds
+# Quake's turbulence as in software Quake and Quakespasm: every texel moves along a sine of the other axis, 8 texels
+# at most, one wave every 128 texels, once around in 2 pi seconds
 LIQUID_WARP = """float2 Texel = UV * Size;
-float2 Wave = sin(Texel.yx * 0.125 + Time * Speed);
+float2 Wave = sin(Texel.yx * (6.2831853 / Cycle) + Time * Speed);
 return UV + Wave * Amount / Size;"""
 
 
@@ -158,7 +159,7 @@ def quake_liquid(name, translucent):
     warp.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT2)
     warp.set_editor_property("description", "Quake warp")
     inputs = []
-    for input_name in ("UV", "Size", "Time", "Speed", "Amount"):
+    for input_name in ("UV", "Size", "Time", "Speed", "Amount", "Cycle"):
         custom_input = unreal.CustomInput()
         custom_input.set_editor_property("input_name", input_name)
         inputs.append(custom_input)
@@ -171,6 +172,7 @@ def quake_liquid(name, translucent):
     lib.connect_material_expressions(time, "", warp, "Time")
     lib.connect_material_expressions(scalar_parameter(material, "WarpSpeed", 1.0, -800, 300), "", warp, "Speed")
     lib.connect_material_expressions(scalar_parameter(material, "WarpAmount", 8.0, -800, 400), "", warp, "Amount")
+    lib.connect_material_expressions(scalar_parameter(material, "WarpCycle", 128.0, -800, 500), "", warp, "Cycle")
 
     sample = lib.create_material_expression(material, unreal.MaterialExpressionTextureSample, -300, -100)
     lib.connect_material_expressions(albedo, "", sample, "Tex")
@@ -182,7 +184,7 @@ def quake_liquid(name, translucent):
     lib.connect_material_property(bright, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
     if translucent:
-        opacity = scalar_parameter(material, "Opacity", 0.6, -300, 250)
+        opacity = scalar_parameter(material, "Opacity", 1.0, -300, 250)
         lib.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
 
     lib.recompile_material(material)

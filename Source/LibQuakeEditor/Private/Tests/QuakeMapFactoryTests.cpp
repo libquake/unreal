@@ -548,14 +548,30 @@ bool FQuakeLiquidTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// liquid textures get the liquid material
-	bool bLiquidMaterial = false;
+	// liquid textures get the liquid material, see through as the project or the map's worldspawn says
+	const ULibQuakeSettings* Settings = GetDefault<ULibQuakeSettings>();
+	int32 Liquids = 0;
 	for (const FStaticMaterial& Slot : Map->Meshes[0]->GetStaticMaterials())
 	{
-		bLiquidMaterial |= Slot.MaterialSlotName == TEXT("*water1") && Slot.MaterialInterface &&
-			Slot.MaterialInterface->GetMaterial()->GetName() == TEXT("M_QuakeLiquid");
+		const FString Name = Slot.MaterialSlotName.ToString();
+		if (!Name.StartsWith(TEXT("*")))
+		{
+			continue;
+		}
+		Liquids++;
+		TestEqual(TEXT("liquids use the translucent liquid material"),
+			Slot.MaterialInterface->GetMaterial()->GetName(), FString(TEXT("M_QuakeLiquidTranslucent")));
+
+		float Opacity = 0;
+		float Brightness = 0;
+		Slot.MaterialInterface->GetScalarParameterValue(FHashedMaterialParameterInfo(TEXT("Opacity")), Opacity);
+		Slot.MaterialInterface->GetScalarParameterValue(FHashedMaterialParameterInfo(TEXT("Brightness")), Brightness);
+		const bool bLava = Name == TEXT("*lava1");
+		TestEqual(TEXT("water from the project, lava from the map's _lavaalpha"), Opacity,
+			bLava ? 0.4f : Settings->WaterAlpha);
+		TestEqual(TEXT("lava glows"), Brightness, bLava ? Settings->LavaBrightness : 1.0f);
 	}
-	TestTrue(TEXT("water uses M_QuakeLiquid"), bLiquidMaterial);
+	TestEqual(TEXT("water and lava"), Liquids, 2);
 
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity);

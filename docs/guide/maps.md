@@ -33,10 +33,14 @@ applies changes to the tables.
 A brush with a texture starting with `*` is a liquid, like in Quake: `*lava...` is lava, `*slime...` slime, every
 other one water, `*teleport` included. It is no wall, the collision leaves it out.
 
-Its faces get `M_QuakeLiquid`: unlit like in Quake, where liquids have no lightmap, two sided so they show from
-below, and warped by Quake's turbulence. Its parameters are `Brightness`, `WarpAmount` (in texels, 8 like Quake) and
-`WarpSpeed`. `M_QuakeLiquidTranslucent` is the same with `Opacity`, set it as `LiquidMaterial` in the
-[project settings](../reference/project-settings.md) to see the floor through the water.
+Its faces get `M_QuakeLiquidTranslucent`: unlit like in Quake, where liquids have no lightmap, two sided so they
+show from below, and warped by Quake's turbulence as in software Quake and Quakespasm. Its parameters are
+`Opacity`, `Brightness`, `WarpAmount` (texels, 8), `WarpCycle` (texels per wave, 128) and `WarpSpeed`.
+
+How much a liquid covers comes from the worldspawn keys `_wateralpha`, `_slimealpha`, `_lavaalpha` and
+`_telealpha`, as in modern Quake engines, and without them from the [project settings](../reference/project-settings.md)
+(water 0.5, slime 0.7, lava 0.85, teleporters 1). Lava is brighter (`LavaBrightness`, 2) and glows with bloom.
+`M_QuakeLiquid` is the same without translucency, set it as `LiquidMaterial` for opaque liquids.
 
 Each liquid brush of a placed map also gets a volume of its shape, an `AQuakeLiquidVolume`: a water volume,
 characters swim in it. Its `QuakeEntity` component has the keys `texture` and `liquid` (`water`, `slime` or

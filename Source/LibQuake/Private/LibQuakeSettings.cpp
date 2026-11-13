@@ -17,7 +17,7 @@ ULibQuakeSettings::ULibQuakeSettings()
 	SkyMaterial = TSoftObjectPtr<UMaterialInterface>(
 		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeSky.M_QuakeSky")));
 	LiquidMaterial = TSoftObjectPtr<UMaterialInterface>(
-		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeLiquid.M_QuakeLiquid")));
+		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeLiquidTranslucent.M_QuakeLiquidTranslucent")));
 
 	MissingTexture = TSoftObjectPtr<UTexture2D>(
 		FSoftObjectPath(TEXT("/LibQuake/Textures/T_QuakeMissing.T_QuakeMissing")));

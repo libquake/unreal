@@ -69,11 +69,30 @@ public:
 	TSoftObjectPtr<UMaterialInterface> SkyMaterial;
 
 	/**
-	 * Parent for liquid textures ('*'). Needs the texture parameter Albedo. The plugin's M_QuakeLiquid is opaque,
-	 * M_QuakeLiquidTranslucent lets the floor show through.
+	 * Parent for liquid textures ('*'). Needs the texture parameter Albedo and the scalars Opacity and Brightness.
+	 * The plugin's M_QuakeLiquidTranslucent lets the floor show through, M_QuakeLiquid is opaque.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Materials")
 	TSoftObjectPtr<UMaterialInterface> LiquidMaterial;
+
+	// How much of a liquid covers what is behind it, 1 is opaque. A map sets its own with the worldspawn keys
+	// "_wateralpha", "_slimealpha", "_lavaalpha" and "_telealpha", as in modern Quake engines.
+
+	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
+	float WaterAlpha = 0.5f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
+	float SlimeAlpha = 0.7f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
+	float LavaAlpha = 0.85f;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
+	float TeleportAlpha = 1.0f;
+
+	/** Brightness of lava, above 1 it glows with bloom. */
+	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0"))
+	float LavaBrightness = 2.0f;
 
 	/**
 	 * Materials used as they are instead of a material instance, by texture name, names ending in '*' are prefixes

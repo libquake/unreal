@@ -170,6 +170,41 @@ namespace
 	}
 
 	/**
+	 * Opacity and brightness of a liquid texture: the map's worldspawn key ("_wateralpha", "_slimealpha",
+	 * "_lavaalpha", "_telealpha") or the project's default for its kind, lava glows.
+	 */
+	void LiquidLook(const UQuakeMap* Map, const FString& TextureName, float& OutOpacity, float& OutBrightness)
+	{
+		const ULibQuakeSettings* Settings = GetDefault<ULibQuakeSettings>();
+		const TCHAR* Key = TEXT("_wateralpha");
+		OutOpacity = Settings->WaterAlpha;
+		OutBrightness = 1.0f;
+		if (TextureName.StartsWith(TEXT("*lava")))
+		{
+			Key = TEXT("_lavaalpha");
+			OutOpacity = Settings->LavaAlpha;
+			OutBrightness = Settings->LavaBrightness;
+		}
+		else if (TextureName.StartsWith(TEXT("*slime")))
+		{
+			Key = TEXT("_slimealpha");
+			OutOpacity = Settings->SlimeAlpha;
+		}
+		else if (TextureName.StartsWith(TEXT("*tele")))
+		{
+			Key = TEXT("_telealpha");
+			OutOpacity = Settings->TeleportAlpha;
+		}
+
+		// the worldspawn is the first entity, BuildAssets has written it already
+		const FQuakeMapEntity* Worldspawn = Map->Entities.IsEmpty() ? nullptr : &Map->Entities[0];
+		if (const FString* Value = Worldspawn ? Worldspawn->Keys.Find(Key) : nullptr)
+		{
+			OutOpacity = FMath::Clamp(FCString::Atof(**Value), 0.0f, 1.0f);
+		}
+	}
+
+	/**
 	 * The material for a texture: the one of the material tables, or a material instance of the project's sky,
 	 * liquid ('*'), masked ('{') or surface material with the layers of the texture. A texture that is in no wad
 	 * gets the missing texture as albedo.
@@ -237,6 +272,15 @@ namespace
 			{
 				SetTexture(TEXT("Emissive"), Texture->Emission);
 			}
+		}
+
+		if (bLiquid)
+		{
+			float Opacity = 1.0f;
+			float Brightness = 1.0f;
+			LiquidLook(Import.Map, TextureName, Opacity, Brightness);
+			Material->SetScalarParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Opacity")), Opacity);
+			Material->SetScalarParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Brightness")), Brightness);
 		}
 
 		Material->PostEditChange();

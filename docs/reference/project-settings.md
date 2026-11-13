@@ -29,8 +29,21 @@ reimport keeps them.
 | `SurfaceMaterial` | `M_Quake` | parent of the material instances, texture parameters `Albedo` and `Emissive`, scalar `EmissiveStrength` |
 | `MaskedMaterial` | `M_QuakeMasked` | the same for `{` textures, transparent where the alpha of `Albedo` is 0 |
 | `SkyMaterial` | `M_QuakeSky` | parent for sky textures, texture parameters `SkyBack` and `SkyFront` |
-| `LiquidMaterial` | `M_QuakeLiquid` | parent for liquid textures (`*`), texture parameter `Albedo`. `M_QuakeLiquidTranslucent` lets the floor show through |
+| `LiquidMaterial` | `M_QuakeLiquidTranslucent` | parent for liquid textures (`*`), texture parameter `Albedo`, scalars `Opacity` and `Brightness`. `M_QuakeLiquid` is opaque |
 | `Materials` | empty | materials used as they are, by texture name or prefix, see [Maps](../guide/maps.md#materials) |
+
+## Liquids
+
+How much a liquid covers what is behind it, 1 is opaque. A map overrides them with the worldspawn keys
+`_wateralpha`, `_slimealpha`, `_lavaalpha` and `_telealpha`.
+
+| Setting | Default |
+|---|---|
+| `float WaterAlpha` | 0.5 |
+| `float SlimeAlpha` | 0.7 |
+| `float LavaAlpha` | 0.85 |
+| `float TeleportAlpha` | 1 |
+| `float LavaBrightness` | 2, above 1 lava glows with bloom |
 
 ## Textures
 
