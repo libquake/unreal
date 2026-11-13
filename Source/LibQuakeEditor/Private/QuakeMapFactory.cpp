@@ -3,11 +3,11 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Engine/StaticMesh.h"
+#include "GeneratedAssets.h"
 #include "ImportUtils.h"
 #include "LibQuakeSettings.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "MeshDescription.h"
-#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "QuakeConversion.h"
@@ -572,8 +572,7 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 	FImport Import;
 	Import.Map = Map;
 	Import.Filename = Filename;
-	Import.Folder = FPackageName::GetLongPackagePath(Map->GetOutermost()->GetName()) /
-		(Map->GetName() + TEXT("_Generated"));
+	Import.Folder = LibQuakeEditor::GeneratedFolder(Map);
 
 	FString Error;
 	quakelib::Level Level;

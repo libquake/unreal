@@ -22,7 +22,7 @@ private:
 
 	void OnAssetReimport(UObject* Asset);
 
-	/** Updates the placed maps of the maps reimported since the last tick. */
+	/** Updates the placed maps of the maps reimported since the last tick and deletes what the reimport left. */
 	void SyncReimportedMaps();
 
 	FDelegateHandle MenuCallback;

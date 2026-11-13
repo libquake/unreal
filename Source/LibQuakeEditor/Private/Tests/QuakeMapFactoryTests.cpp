@@ -1,4 +1,5 @@
 #include "ActorFactoryQuakeMap.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -12,8 +13,10 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
+#include "GeneratedAssets.h"
 #include "Interfaces/IPluginManager.h"
 #include "LibQuakeSettings.h"
+#include "Materials/MaterialInstanceConstant.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
@@ -466,6 +469,47 @@ bool FQuakeMeshLibraryTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("without the key it is a level"), Map->IsMeshLibrary());
 	Map->Settings.bMeshLibrary = true;
 	TestTrue(TEXT("the setting does the same"), Map->IsMeshLibrary());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeCleanupTest, "LibQuake.Editor.Cleanup",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeCleanupTest::RunTest(const FString& Parameters)
+{
+	UQuakeMap* Map = ImportTestMap(TEXT("cleanup_map"), TEXT("trigger.map"));
+	if (!TestNotNull(TEXT("map imports"), Map))
+	{
+		return false;
+	}
+
+	// what an earlier import of a renamed group would have left, and an asset someone put into the folder
+	const FString Folder = LibQuakeEditor::GeneratedFolder(Map);
+	const auto Create = [&Folder](UClass* Class, const TCHAR* Name)
+	{
+		UObject* Asset = NewObject<UObject>(CreatePackage(*(Folder / Name)), Class, Name, RF_Public | RF_Standalone);
+		FAssetRegistryModule::AssetCreated(Asset);
+		return TWeakObjectPtr<UObject>(Asset);
+	};
+	const TWeakObjectPtr<UObject> StaleMesh = Create(UStaticMesh::StaticClass(), TEXT("SM_old_group"));
+	const TWeakObjectPtr<UObject> StaleMaterial =
+		Create(UMaterialInstanceConstant::StaticClass(), TEXT("MI_old_texture"));
+	const TWeakObjectPtr<UObject> Own = Create(UStaticMesh::StaticClass(), TEXT("MyOwnMesh"));
+	const TArray<TObjectPtr<UStaticMesh>> Meshes = Map->Meshes;
+
+	TestEqual(TEXT("the two stale assets are deleted"), LibQuakeEditor::DeleteUnusedGeneratedAssets(Map), 2);
+	TestFalse(TEXT("stale mesh"), StaleMesh.IsValid());
+	TestFalse(TEXT("stale material"), StaleMaterial.IsValid());
+	TestTrue(TEXT("an asset the importer did not make stays"), Own.IsValid());
+	for (const UStaticMesh* Mesh : Meshes)
+	{
+		TestTrue(TEXT("the map's meshes stay"), IsValid(Mesh));
+	}
+	for (const FStaticMaterial& Slot : Meshes[0]->GetStaticMaterials())
+	{
+		TestTrue(TEXT("their materials too"), IsValid(Slot.MaterialInterface));
+	}
+	TestEqual(TEXT("nothing left to delete"), LibQuakeEditor::DeleteUnusedGeneratedAssets(Map), 0);
 	return true;
 }
 

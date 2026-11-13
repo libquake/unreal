@@ -59,7 +59,10 @@ with their clip faces.
 
 A reimport updates the meshes and material instances in place, and every placed map follows: entities keep their
 actor and get its place, mesh and keys again, new entities get an actor, the actors of removed ones are deleted.
-Properties the plugin does not set stay as they were edited in Unreal. An actor detached from its map actor is
+Properties the plugin does not set stay as they were edited in Unreal. Meshes, material instances and bsp
+textures the map no longer uses, e.g. of a renamed group or a texture that now has a material from the material
+table, are deleted from `<map>_Generated` afterwards, unless something else still refers to them, like a saved
+level that is not open. Other assets in that folder are not touched. An actor detached from its map actor is
 no longer part of the map. **Rebuild** in the details of a map actor does the same without a reimport, for
 example after changing the entity classes.
 

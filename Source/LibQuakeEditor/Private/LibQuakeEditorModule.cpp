@@ -3,6 +3,7 @@
 #include "ContentBrowserMenuContexts.h"
 #include "Editor.h"
 #include "EngineUtils.h"
+#include "GeneratedAssets.h"
 #include "Logging/MessageLog.h"
 #include "MessageLogModule.h"
 #include "Misc/CoreDelegates.h"
@@ -180,6 +181,15 @@ void FLibQuakeEditorModule::SyncReimportedMaps()
 		if (Maps.Contains(TWeakObjectPtr<UQuakeMap>(It->Map.Get())))
 		{
 			LibQuakeEditor::SyncMapActor(*It);
+		}
+	}
+
+	// the placed maps use the new assets now, what the reimport left behind can go
+	for (const TWeakObjectPtr<UQuakeMap>& Map : Maps)
+	{
+		if (Map.IsValid())
+		{
+			LibQuakeEditor::DeleteUnusedGeneratedAssets(Map.Get());
 		}
 	}
 }
