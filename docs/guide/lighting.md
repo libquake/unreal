@@ -4,6 +4,8 @@ Maps are lit by Unreal. The lights of the map become Unreal lights with the map'
 default: they show after a lighting build (Build > Build Lighting Only). For Lumen without a build, set it to
 Movable in the [map settings](../reference/map-settings.md), the next reimport or Rebuild applies it to the
 placed maps. New maps start with `DefaultLightMobility` of the [project settings](../reference/project-settings.md).
+`LightMobility` applies to the plugin's lights and Blueprints based on them, lights of own classes keep what their
+Blueprint says.
 
 | Map | Unreal |
 |---|---|

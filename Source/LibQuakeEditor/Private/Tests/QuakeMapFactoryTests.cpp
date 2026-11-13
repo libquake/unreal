@@ -450,7 +450,14 @@ bool FQuakeMeshLibraryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("loose brushes of the worldspawn"), Meshes.Contains(TEXT("SM_worldspawn_0")));
 	TestTrue(TEXT("a group is named after it"), Meshes.Contains(TEXT("SM_crate")));
 	TestTrue(TEXT("so is the second one"), Meshes.Contains(TEXT("SM_pillar")));
-	TestTrue(TEXT("an entity in a group gets the group's name"), Meshes.Contains(TEXT("SM_pillar_1")));
+	TestFalse(TEXT("an entity in a group is part of the group's mesh"), Meshes.Contains(TEXT("SM_pillar_1")));
+	TestEqual(TEXT("world, crate and pillar"), Meshes.Num(), 3);
+	if (const UStaticMesh* const* Pillar = Meshes.Find(TEXT("SM_pillar")))
+	{
+		// the pillar spans x 128..144, the detail brush in its group 120..152
+		TestEqual(TEXT("the pillar mesh has the detail brush"), (*Pillar)->GetBoundingBox().GetSize().X,
+			32.0 * Map->Settings.Scale, 0.01);
+	}
 
 	// the crate spans 0..32 on every axis, it stands on its pivot
 	if (const UStaticMesh* const* Crate = Meshes.Find(TEXT("SM_crate")))

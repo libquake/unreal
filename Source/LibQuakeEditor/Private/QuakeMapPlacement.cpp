@@ -184,11 +184,15 @@ namespace
 		Keys->ClassName = Spec.bSun ? FString() : Spec.Entity->ClassName;
 		Keys->Keys = Spec.Entity->Keys;
 
-		TInlineComponentArray<ULightComponent*> Lights(Actor);
-		for (ULightComponent* Light : Lights)
+		// the plugin's lights follow the map, the lights of own classes keep what their Blueprint says
+		if (Actor->IsA<AQuakePointLight>() || Actor->IsA<AQuakeSun>())
 		{
-			Light->Modify();
-			Light->SetMobility(Map->Settings.LightMobility);
+			TInlineComponentArray<ULightComponent*> Lights(Actor);
+			for (ULightComponent* Light : Lights)
+			{
+				Light->Modify();
+				Light->SetMobility(Map->Settings.LightMobility);
+			}
 		}
 
 		if (Actor->Implements<UQuakeEntity>())

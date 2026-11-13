@@ -31,10 +31,10 @@ applies changes to the tables.
 
 A map can be a collection of meshes instead of a level, e.g. a map full of props. Set the worldspawn key
 `_meshlib` to `1` in TrenchBroom (`qu_meshlib` from older maps works too) or turn on `bMeshLibrary` in the
-[map settings](../reference/map-settings.md). Every brush entity becomes a mesh as usual, and each TrenchBroom
-group is one: its mesh is named after the group, `SM_crate` for a group "crate", with its pivot at the bottom
-center (see below). Brush entities inside a group get the group's name with a number, loose brushes of the
-worldspawn end up in `SM_worldspawn_0`.
+[map settings](../reference/map-settings.md). Each TrenchBroom group becomes one mesh, brush entities inside it
+and nested groups included: it is named after the group, `SM_crate` for a group "crate", with its pivot at the
+bottom center of the whole group (see below). Brush entities outside of groups get their own mesh, loose brushes
+of the worldspawn end up in `SM_worldspawn_0`.
 
 A mesh library is not placed: dragging it into a level or Place in Level refuse it, its meshes are dragged into
 levels like any other static mesh. A reimport updates them in place, as long as the group names stay.

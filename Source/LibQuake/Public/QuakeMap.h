@@ -57,7 +57,10 @@ struct LIBQUAKE_API FQuakeMapSettings
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))
 	float LuxelSize = 16.0f;
 
-	/** Mobility of the lights of placed maps. Static for baked light, Movable for Lumen. */
+	/**
+	 * Mobility of the plugin's lights (AQuakePointLight, AQuakeSun and Blueprints of them) in placed maps. Static for
+	 * baked light, Movable for Lumen. Lights of own classes keep their mobility.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting")
 	TEnumAsByte<EComponentMobility::Type> LightMobility = EComponentMobility::Static;
 
@@ -122,6 +125,9 @@ public:
 	/** bMeshLibrary or the worldspawn key "_meshlib" ("qu_meshlib" in older maps). */
 	UFUNCTION(BlueprintPure, Category = "Quake")
 	bool IsMeshLibrary() const;
+
+	/** Whether the keys of a worldspawn make the map a mesh library. */
+	static bool HasMeshLibraryKey(const TMap<FString, FString>& WorldspawnKeys);
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(VisibleAnywhere, Instanced, Category = "Import")

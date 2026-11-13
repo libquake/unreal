@@ -16,8 +16,8 @@ namespace LibQuakeEditor
 	 * Brings the entity actors of a placed map in line with its map. Every entity gets an actor of the class mapped
 	 * to its class name, or a static mesh actor for brush entities and an AQuakePointEntity otherwise. An entity
 	 * keeps its actor while the class stays the same, actors of entities that are gone are deleted. The actor's
-	 * place, mesh and keys are set, its lights get the map's LightMobility, and actors implementing IQuakeEntity
-	 * apply the keys. The worldspawn adds a sun
+	 * place, mesh and keys are set, the plugin's lights get the map's LightMobility, and actors implementing
+	 * IQuakeEntity apply the keys. The worldspawn adds a sun
 	 * ("_sunlight").
 	 */
 	void SyncMapActor(AQuakeMapActor* MapActor);

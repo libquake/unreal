@@ -432,6 +432,29 @@ namespace
 		}
 	}
 
+	/** A mesh library joins the brush entities of each TrenchBroom group into one mesh. */
+	bool IsMeshLibrary(const UQuakeMap* Map, const quakelib::MapDocument& Document)
+	{
+		if (Map->Settings.bMeshLibrary)
+		{
+			return true;
+		}
+
+		for (const quakelib::MapEntity& Entity : Document.entities)
+		{
+			if (Entity.properties.classname == "worldspawn")
+			{
+				TMap<FString, FString> Keys;
+				for (const auto& [Key, Value] : Entity.properties.attributes)
+				{
+					Keys.Add(ToFString(Key), ToFString(Value));
+				}
+				return UQuakeMap::HasMeshLibraryKey(Keys);
+			}
+		}
+		return false;
+	}
+
 	/** Parses and builds a .map with the textures of the imported wads. */
 	bool BuildFromMap(FImport& Import, quakelib::Level& OutLevel, FString& OutError)
 	{
@@ -447,6 +470,7 @@ namespace
 		quakelib::MapBuildOptions Options;
 		Options.csg = Import.Map->Settings.bCSG;
 		Options.pivot = ToPivotMode(Import.Map->Settings.Pivot);
+		Options.mergeGroups = IsMeshLibrary(Import.Map, Document);
 		Options.textureSize = [&Import](const std::string& Name) -> std::pair<int, int>
 		{
 			// a missing texture gets a size anyway, without one its faces have no uvs and no tangents

@@ -12,13 +12,14 @@ bool UQuakeMap::IsMeshLibrary() const
 
 	const FQuakeMapEntity* Worldspawn = Entities.FindByPredicate(
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("worldspawn"); });
-	if (!Worldspawn)
-	{
-		return false;
-	}
+	return Worldspawn && HasMeshLibraryKey(Worldspawn->Keys);
+}
+
+bool UQuakeMap::HasMeshLibraryKey(const TMap<FString, FString>& WorldspawnKeys)
+{
 	for (const TCHAR* Key : {TEXT("_meshlib"), TEXT("qu_meshlib")})
 	{
-		if (const FString* Value = Worldspawn->Keys.Find(Key); Value && *Value != TEXT("0"))
+		if (const FString* Value = WorldspawnKeys.Find(Key); Value && *Value != TEXT("0"))
 		{
 			return true;
 		}
