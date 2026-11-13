@@ -181,13 +181,23 @@ namespace
 		return FMath::Clamp(FMath::RoundUpToPowerOfTwo(FMath::Max(Side, 1)), 32, 1024);
 	}
 
-	UStaticMesh* BuildStaticMesh(FImport& Import, const FString& Name, const quakelib::EntityGeometry& Geometry)
+	/**
+	 * The mesh of a brush entity. Entities without visible faces (triggers) get their hulls as mesh, bOutInvisible
+	 * tells them apart: they are only there for collision and overlaps. Null if the entity has neither.
+	 */
+	UStaticMesh* BuildStaticMesh(FImport& Import, const FString& Name, const quakelib::EntityGeometry& Geometry,
+		bool& bOutInvisible)
 	{
 		const float Scale = Import.Map->Settings.Scale;
 		FMeshDescription Description;
-		if (!LibQuake::BuildMeshDescription(Geometry, Scale, Description))
+		bOutInvisible = !LibQuake::BuildMeshDescription(Geometry, Scale, Description);
+		if (bOutInvisible)
 		{
-			return nullptr;
+			Description = FMeshDescription();
+			if (!LibQuake::BuildHullMeshDescription(Geometry, Scale, Description))
+			{
+				return nullptr;
+			}
 		}
 
 		bool bCreated = false;
@@ -201,18 +211,19 @@ namespace
 			FStaticMeshConstAttributes(Description).GetPolygonGroupMaterialSlotNames();
 		for (const FPolygonGroupID Group : Description.PolygonGroups().GetElementIDs())
 		{
-			Materials.Emplace(MaterialFor(Import, Slots[Group].ToString()), Slots[Group], Slots[Group]);
+			UMaterialInterface* Material = bOutInvisible ? nullptr : MaterialFor(Import, Slots[Group].ToString());
+			Materials.Emplace(Material, Slots[Group], Slots[Group]);
 		}
 
 		// Unreal lays out its own lightmap uvs from the texture uvs, it knows what Lightmass needs
 		const int32 Resolution = LightmapResolution(Geometry, Import.Map->Settings.LuxelSize);
 		Mesh->SetNumSourceModels(1);
 		FMeshBuildSettings& Build = Mesh->GetSourceModel(0).BuildSettings;
-		Build.bRecomputeNormals = false;
+		Build.bRecomputeNormals = bOutInvisible;
 		Build.bRecomputeTangents = true;
 		Build.bUseMikkTSpace = true;
 		Build.bRemoveDegenerates = true;
-		Build.bGenerateLightmapUVs = true;
+		Build.bGenerateLightmapUVs = !bOutInvisible;
 		Build.SrcLightmapIndex = 0;
 		Build.DstLightmapIndex = 1;
 		Build.MinLightmapResolution = Resolution;
@@ -358,7 +369,7 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 		Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Map->Settings.Scale)));
 		const FString Name = LibQuakeEditor::UniqueAssetName(
 			FString::Printf(TEXT("SM_%s_%d"), *Out.ClassName, ClassCount.FindOrAdd(Out.ClassName)++), Import.UsedNames);
-		if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry))
+		if (UStaticMesh* Mesh = BuildStaticMesh(Import, Name, Geometry, Out.bInvisible))
 		{
 			Out.Mesh = Map->Meshes.Add(Mesh);
 		}

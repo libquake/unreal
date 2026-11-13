@@ -55,6 +55,35 @@ namespace LibQuake
 		return OutMesh.Triangles().Num() > 0;
 	}
 
+	bool BuildHullMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale, FMeshDescription& OutMesh)
+	{
+		FStaticMeshAttributes Attributes(OutMesh);
+		Attributes.Register();
+		TVertexAttributesRef<FVector3f> Positions = Attributes.GetVertexPositions();
+		const FPolygonGroupID Group = OutMesh.CreatePolygonGroup();
+		Attributes.GetPolygonGroupMaterialSlotNames()[Group] = TEXT("hull");
+
+		TArray<FVertexInstanceID> Instances;
+		for (const quakelib::CollisionHull& Hull : Geometry.hulls)
+		{
+			Instances.Reset(Hull.points.size());
+			for (const quakelib::Vec3& Point : Hull.points)
+			{
+				const FVertexID Vertex = OutMesh.CreateVertex();
+				Positions[Vertex] = ToUnrealPosition(Point, Scale);
+				Instances.Add(OutMesh.CreateVertexInstance(Vertex));
+			}
+			// mirrored like the render meshes
+			for (size_t i = 0; i + 2 < Hull.indices.size(); i += 3)
+			{
+				const FVertexInstanceID Triangle[] = {
+					Instances[Hull.indices[i]], Instances[Hull.indices[i + 2]], Instances[Hull.indices[i + 1]]};
+				OutMesh.CreateTriangle(Group, Triangle);
+			}
+		}
+		return OutMesh.Triangles().Num() > 0;
+	}
+
 	TArray<FKConvexElem> BuildConvexElements(const quakelib::EntityGeometry& Geometry, float Scale,
 		TFunctionRef<bool(quakelib::CollisionHull::Type)> Include)
 	{

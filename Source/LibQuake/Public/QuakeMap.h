@@ -6,6 +6,7 @@
 #include "QuakeMap.generated.h"
 
 class UAssetImportData;
+class UQuakeEntityClasses;
 class UStaticMesh;
 class UWorld;
 
@@ -25,6 +26,10 @@ struct LIBQUAKE_API FQuakeMapSettings
 	/** Quake units per lightmap texel. 16 matches Quake, smaller values give sharper shadows. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))
 	float LuxelSize = 16.0f;
+
+	/** Actor classes for entity classes, used when the map is placed. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Entities")
+	TObjectPtr<UQuakeEntityClasses> EntityClasses;
 };
 
 /** An entity of the map, in Unreal units relative to the map's origin. */
@@ -40,9 +45,13 @@ struct LIBQUAKE_API FQuakeMapEntity
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")
 	FTransform Transform;
 
-	/** Index into UQuakeMap::Meshes, INDEX_NONE for point entities and brush entities without visible faces. */
+	/** Index into UQuakeMap::Meshes, INDEX_NONE for point entities. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")
 	int32 Mesh = INDEX_NONE;
+
+	/** A brush entity without visible faces, like a trigger. Its mesh is the brush hulls, for collision only. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")
+	bool bInvisible = false;
 
 	/** All keys as written in the map, classname included. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")

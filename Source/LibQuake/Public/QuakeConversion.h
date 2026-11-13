@@ -40,6 +40,13 @@ namespace LibQuake
 	LIBQUAKE_API bool BuildMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale,
 		FMeshDescription& OutMesh);
 
+	/**
+	 * The brush hulls as one mesh, for brush entities without visible faces like triggers: they need a shape for
+	 * collision and overlaps but nothing to draw. Returns false if the entity has no hulls.
+	 */
+	LIBQUAKE_API bool BuildHullMeshDescription(const quakelib::EntityGeometry& Geometry, float Scale,
+		FMeshDescription& OutMesh);
+
 	/** One convex element per brush hull of the given types. */
 	LIBQUAKE_API TArray<FKConvexElem> BuildConvexElements(const quakelib::EntityGeometry& Geometry, float Scale,
 		TFunctionRef<bool(quakelib::CollisionHull::Type)> Include);

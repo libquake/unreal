@@ -11,6 +11,8 @@
 #include "LevelInstance/LevelInstanceInterface.h"
 #include "LevelInstance/LevelInstanceSubsystem.h"
 #include "Misc/PackageName.h"
+#include "QuakeEntityClasses.h"
+#include "QuakeEntityComponent.h"
 #include "QuakeMap.h"
 #include "UObject/Package.h"
 
@@ -40,13 +42,76 @@ namespace
 		}
 	}
 
-	template <typename T>
-	T* Spawn(ULevel* Level, const FString& Label, const FTransform& Transform)
+	AActor* Spawn(ULevel* Level, UClass* Class, const FString& Label, const FTransform& Transform)
 	{
 		FActorSpawnParameters Parameters;
 		Parameters.OverrideLevel = Level;
-		T* Actor = Level->GetWorld()->SpawnActor<T>(T::StaticClass(), Transform, Parameters);
-		Actor->SetActorLabel(Label);
+		AActor* Actor = Level->GetWorld()->SpawnActor(Class, &Transform, Parameters);
+		if (Actor)
+		{
+			Actor->SetActorLabel(Label);
+		}
+		return Actor;
+	}
+
+	template <typename T>
+	T* Spawn(ULevel* Level, const FString& Label, const FTransform& Transform)
+	{
+		return Cast<T>(Spawn(Level, T::StaticClass(), Label, Transform));
+	}
+
+	template <typename T>
+	T* AddComponent(AActor* Actor, const TCHAR* Name)
+	{
+		T* Component = NewObject<T>(Actor, Name);
+		Actor->AddInstanceComponent(Component);
+		return Component;
+	}
+
+	UClass* MappedClass(const UQuakeMap* Map, const FString& ClassName)
+	{
+		const UQuakeEntityClasses* Mapping = Map->Settings.EntityClasses;
+		const TSoftClassPtr<AActor>* Class = Mapping ? Mapping->Classes.Find(ClassName) : nullptr;
+		return Class ? Class->LoadSynchronous() : nullptr;
+	}
+
+	/** Brushes without visible faces stay hidden, trigger_* ones only overlap, the others block. */
+	void SetupMesh(UStaticMeshComponent* Component, UStaticMesh* Mesh, const FQuakeMapEntity& Entity)
+	{
+		Component->SetStaticMesh(Mesh);
+		if (!Entity.bInvisible)
+		{
+			return;
+		}
+		Component->SetVisibility(false);
+		Component->SetHiddenInGame(true);
+		Component->SetCastShadow(false);
+		if (Entity.ClassName.StartsWith(TEXT("trigger_")))
+		{
+			Component->SetCollisionProfileName(TEXT("Trigger"));
+			Component->SetGenerateOverlapEvents(true);
+		}
+	}
+
+	/** An actor of a mapped class, with the brush mesh as an extra component if the entity has one. */
+	AActor* SpawnMapped(ULevel* Level, UClass* Class, const FString& Label, const FQuakeMapEntity& Entity,
+		UStaticMesh* Mesh)
+	{
+		AActor* Actor = Spawn(Level, Class, Label, Entity.Transform);
+		if (Actor && Mesh)
+		{
+			UStaticMeshComponent* Component = AddComponent<UStaticMeshComponent>(Actor, TEXT("QuakeMesh"));
+			if (USceneComponent* Root = Actor->GetRootComponent())
+			{
+				Component->SetupAttachment(Root);
+			}
+			else
+			{
+				Actor->SetRootComponent(Component);
+			}
+			SetupMesh(Component, Mesh, Entity);
+			Component->RegisterComponent();
+		}
 		return Actor;
 	}
 
@@ -67,21 +132,46 @@ namespace LibQuakeEditor
 		{
 			const FString Label = FString::Printf(TEXT("%s_%d"), *Entity.ClassName,
 				ClassCount.FindOrAdd(Entity.ClassName)++);
-			if (Map->Meshes.IsValidIndex(Entity.Mesh))
+			UStaticMesh* Mesh = Map->Meshes.IsValidIndex(Entity.Mesh) ? Map->Meshes[Entity.Mesh].Get() : nullptr;
+
+			AActor* Actor = nullptr;
+			if (UClass* Class = MappedClass(Map, Entity.ClassName))
 			{
-				AStaticMeshActor* Actor = Spawn<AStaticMeshActor>(Level, Label, Entity.Transform);
-				Actor->GetStaticMeshComponent()->SetStaticMesh(Map->Meshes[Entity.Mesh]);
-				Actors.Add(Actor);
+				Actor = SpawnMapped(Level, Class, Label, Entity, Mesh);
 			}
-			else if (Entity.Mesh == INDEX_NONE && Entity.ClassName.StartsWith(TEXT("light")))
+			else if (Mesh)
+			{
+				AStaticMeshActor* MeshActor = Spawn<AStaticMeshActor>(Level, Label, Entity.Transform);
+				SetupMesh(MeshActor->GetStaticMeshComponent(), Mesh, Entity);
+				Actor = MeshActor;
+			}
+			else if (Entity.ClassName.StartsWith(TEXT("light")))
 			{
 				APointLight* Light = Spawn<APointLight>(Level, Label, Entity.Transform);
 				SetupLight(Light, Entity, Map->Settings.Scale);
-				Actors.Add(Light);
+				Actor = Light;
 			}
 			else if (Entity.ClassName == TEXT("info_player_start"))
 			{
-				Actors.Add(Spawn<APlayerStart>(Level, Label, Entity.Transform));
+				Actor = Spawn<APlayerStart>(Level, Label, Entity.Transform);
+			}
+			else
+			{
+				// unknown point entities keep their place and keys, Blueprints can be mapped to them later
+				// an actor spawned without a root has no transform, it gets one before it is placed
+				Actor = Spawn<AActor>(Level, Label, Entity.Transform);
+				Actor->SetRootComponent(AddComponent<USceneComponent>(Actor, TEXT("Root")));
+				Actor->GetRootComponent()->RegisterComponent();
+				Actor->SetActorTransform(Entity.Transform);
+			}
+
+			if (Actor)
+			{
+				UQuakeEntityComponent* Keys = AddComponent<UQuakeEntityComponent>(Actor, TEXT("QuakeEntity"));
+				Keys->ClassName = Entity.ClassName;
+				Keys->Keys = Entity.Keys;
+				Keys->RegisterComponent();
+				Actors.Add(Actor);
 			}
 		}
 		return Actors;

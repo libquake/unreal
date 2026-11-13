@@ -9,7 +9,11 @@ class UWorld;
 
 namespace LibQuakeEditor
 {
-	/** Spawns the map into Level at the world origin: a static mesh actor per mesh, lights and player starts. */
+	/**
+	 * Spawns the map into Level at the world origin. Every entity gets a UQuakeEntityComponent with its keys and
+	 * the actor class mapped to its class name, or by default a static mesh actor, point light, player start or an
+	 * empty actor.
+	 */
 	TArray<AActor*> SpawnMapActors(const UQuakeMap* Map, ULevel* Level);
 
 	/**
