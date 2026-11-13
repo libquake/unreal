@@ -47,6 +47,7 @@ them. `Rebuild` (editor only) brings them in line with the map.
 | `AQuakePointLight` | point light from `light` and `_color` |
 | `AQuakePlayerStart` | player start standing on the floor |
 | `AQuakeSun` | directional light from `_sunlight`, `_sunlight_color`, `_sun_mangle` of the worldspawn |
+| `AQuakeLiquidVolume` | water volume of a liquid brush, keys `texture` and `liquid` (`water`, `slime`, `lava`) |
 | `AQuakePointEntity` | empty actor with a sprite, for point entities without a class |
 
 ## UQuakeEntityClasses

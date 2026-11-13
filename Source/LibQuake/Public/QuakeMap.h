@@ -76,6 +76,24 @@ struct LIBQUAKE_API FQuakeMapSettings
 	TObjectPtr<UQuakeEntityClasses> EntityClasses;
 };
 
+/** A liquid brush (a texture starting with '*'): its convex shape, relative to the entity, in Unreal units. */
+USTRUCT(BlueprintType)
+struct LIBQUAKE_API FQuakeLiquid
+{
+	GENERATED_BODY()
+
+	/** As in the map, e.g. "*water1". */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Liquid")
+	FString Texture;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Liquid")
+	TArray<FVector> Points;
+
+	/** Triangles, three indices into Points each, front faces outside. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Liquid")
+	TArray<int32> Indices;
+};
+
 /** An entity of the map, in Unreal units relative to the map's origin. */
 USTRUCT(BlueprintType)
 struct LIBQUAKE_API FQuakeMapEntity
@@ -100,6 +118,10 @@ struct LIBQUAKE_API FQuakeMapEntity
 	/** All keys as written in the map, classname included. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")
 	TMap<FString, FString> Keys;
+
+	/** The liquid brushes of a brush entity, each becomes a volume when the map is placed. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Entity")
+	TArray<FQuakeLiquid> Liquids;
 };
 
 /**

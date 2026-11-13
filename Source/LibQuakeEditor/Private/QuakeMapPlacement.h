@@ -18,7 +18,7 @@ namespace LibQuakeEditor
 	 * keeps its actor while the class stays the same, actors of entities that are gone are deleted. The actor's
 	 * place, mesh and keys are set, the plugin's lights get the map's LightMobility, and actors implementing
 	 * IQuakeEntity apply the keys. The worldspawn adds a sun
-	 * ("_sunlight").
+	 * ("_sunlight"), liquid brushes a volume each (the project's LiquidClasses).
 	 */
 	void SyncMapActor(AQuakeMapActor* MapActor);
 

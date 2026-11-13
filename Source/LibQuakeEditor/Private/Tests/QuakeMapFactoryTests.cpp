@@ -1,6 +1,7 @@
 #include "ActorFactoryQuakeMap.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
+#include "Components/BrushComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/PointLightComponent.h"
@@ -266,6 +267,9 @@ bool FQuakeEntityClassesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the longer prefix wins"), Find(TEXT("light_torch_x")) == AQuakePointEntity::StaticClass());
 	TestTrue(TEXT("an exact name wins"), Find(TEXT("light_torch_small_walltorch")) == APlayerStart::StaticClass());
 	TestNull(TEXT("no match"), LibQuake::FindByName(Classes, FString(TEXT("info_null"))));
+	Classes.Add(TEXT("*"), AActor::StaticClass());
+	TestTrue(TEXT("* matches every name"), Find(TEXT("info_null")) == AActor::StaticClass());
+	TestTrue(TEXT("but loses to longer prefixes"), Find(TEXT("light_fluoro")) == AQuakePointLight::StaticClass());
 
 	UClass* Class = nullptr;
 	TestTrue(TEXT("the project settings have the lights"), UQuakeEntityClasses::Resolve(nullptr, TEXT("light"), Class));
@@ -530,6 +534,64 @@ bool FQuakeCleanupTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("their materials too"), IsValid(Slot.MaterialInterface));
 	}
 	TestEqual(TEXT("nothing left to delete"), LibQuakeEditor::DeleteUnusedGeneratedAssets(Map), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeLiquidTest, "LibQuake.Editor.Liquids",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeLiquidTest::RunTest(const FString& Parameters)
+{
+	UQuakeMap* Map = ImportTestMap(TEXT("liquid_map"), TEXT("liquid.map"));
+	if (!TestNotNull(TEXT("map imports"), Map) || !TestEqual(TEXT("two pools"), Map->Entities[0].Liquids.Num(), 2))
+	{
+		return false;
+	}
+
+	// liquid textures get the liquid material
+	bool bLiquidMaterial = false;
+	for (const FStaticMaterial& Slot : Map->Meshes[0]->GetStaticMaterials())
+	{
+		bLiquidMaterial |= Slot.MaterialSlotName == TEXT("*water1") && Slot.MaterialInterface &&
+			Slot.MaterialInterface->GetMaterial()->GetName() == TEXT("M_QuakeLiquid");
+	}
+	TestTrue(TEXT("water uses M_QuakeLiquid"), bLiquidMaterial);
+
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity);
+	TArray<AQuakeLiquidVolume*> Volumes;
+	for (AActor* Actor : MapActor->GetEntityActors())
+	{
+		if (AQuakeLiquidVolume* Volume = Cast<AQuakeLiquidVolume>(Actor))
+		{
+			Volumes.Add(Volume);
+		}
+	}
+	if (!TestEqual(TEXT("a volume per pool"), Volumes.Num(), 2))
+	{
+		World->EditorDestroyActor(MapActor, true);
+		return false;
+	}
+
+	const float Scale = Map->Settings.Scale;
+	for (const AQuakeLiquidVolume* Volume : Volumes)
+	{
+		const UQuakeEntityComponent* Entity = Volume->FindComponentByClass<UQuakeEntityComponent>();
+		const bool bWater = Entity->GetKey(TEXT("liquid")) == TEXT("water");
+		TestTrue(TEXT("characters swim in it"), Volume->bWaterVolume);
+		TestEqual(TEXT("the kind follows the texture"), Entity->GetKey(TEXT("texture")),
+			FString(bWater ? TEXT("*water1") : TEXT("*lava1")));
+
+		// the water spans 0..64 and the lava 128..192 on x, both 0..64 on Quake's y and 0..32 high
+		const FVector Center = FVector(bWater ? 32 : 160, -32, 16) * Scale;
+		TestTrue(TEXT("the volume has collision"),
+			Volume->GetBrushComponent()->BrushBodySetup->AggGeom.ConvexElems.Num() > 0);
+		TestTrue(TEXT("the pool's center is inside"), Volume->EncompassesPoint(Center));
+		TestFalse(TEXT("above the pool is outside"), Volume->EncompassesPoint(Center + FVector(0, 0, 32 * Scale)));
+		TestFalse(TEXT("next to it too"), Volume->EncompassesPoint(Center + FVector(64 * Scale, 0, 0)));
+	}
+
+	World->EditorDestroyActor(MapActor, true);
 	return true;
 }
 

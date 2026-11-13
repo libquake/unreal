@@ -127,7 +127,71 @@ def missing_texture():
     assets.save_loaded_asset(texture)
 
 
+def scalar_parameter(material, name, value, x, y):
+    node = lib.create_material_expression(material, unreal.MaterialExpressionScalarParameter, x, y)
+    node.set_editor_property("parameter_name", name)
+    node.set_editor_property("default_value", value)
+    return node
+
+
+# Quake's turbulence: every texel moves along a sine of the other axis, 8 texels at most, once around in 2 pi seconds
+LIQUID_WARP = """float2 Texel = UV * Size;
+float2 Wave = sin(Texel.yx * 0.125 + Time * Speed);
+return UV + Wave * Amount / Size;"""
+
+
+def quake_liquid(name, translucent):
+    """Liquids ('*'): unlit like in Quake, where they have no lightmap, two sided and warped."""
+    blend_mode = unreal.BlendMode.BLEND_TRANSLUCENT if translucent else unreal.BlendMode.BLEND_OPAQUE
+    material = new_material(name, unreal.MaterialShadingModel.MSM_UNLIT, blend_mode)
+    material.set_editor_property("two_sided", True)
+
+    albedo = lib.create_material_expression(material, unreal.MaterialExpressionTextureObjectParameter, -1100, -200)
+    albedo.set_editor_property("parameter_name", "Albedo")
+    albedo.set_editor_property("texture", unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture"))
+    size = lib.create_material_expression(material, unreal.MaterialExpressionTextureProperty, -800, 0)
+    size.set_editor_property("property", unreal.MaterialExposedTextureProperty.TMTM_TEXTURE_SIZE)
+    lib.connect_material_expressions(albedo, "", size, "")
+
+    warp = lib.create_material_expression(material, unreal.MaterialExpressionCustom, -550, 100)
+    warp.set_editor_property("code", LIQUID_WARP)
+    warp.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT2)
+    warp.set_editor_property("description", "Quake warp")
+    inputs = []
+    for input_name in ("UV", "Size", "Time", "Speed", "Amount"):
+        custom_input = unreal.CustomInput()
+        custom_input.set_editor_property("input_name", input_name)
+        inputs.append(custom_input)
+    warp.set_editor_property("inputs", inputs)
+
+    uv = lib.create_material_expression(material, unreal.MaterialExpressionTextureCoordinate, -800, 100)
+    time = lib.create_material_expression(material, unreal.MaterialExpressionTime, -800, 200)
+    lib.connect_material_expressions(uv, "", warp, "UV")
+    lib.connect_material_expressions(size, "", warp, "Size")
+    lib.connect_material_expressions(time, "", warp, "Time")
+    lib.connect_material_expressions(scalar_parameter(material, "WarpSpeed", 1.0, -800, 300), "", warp, "Speed")
+    lib.connect_material_expressions(scalar_parameter(material, "WarpAmount", 8.0, -800, 400), "", warp, "Amount")
+
+    sample = lib.create_material_expression(material, unreal.MaterialExpressionTextureSample, -300, -100)
+    lib.connect_material_expressions(albedo, "", sample, "Tex")
+    lib.connect_material_expressions(warp, "", sample, "UVs")
+
+    bright = lib.create_material_expression(material, unreal.MaterialExpressionMultiply, -100, -100)
+    lib.connect_material_expressions(sample, "RGB", bright, "A")
+    lib.connect_material_expressions(scalar_parameter(material, "Brightness", 1.0, -300, 150), "", bright, "B")
+    lib.connect_material_property(bright, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+    if translucent:
+        opacity = scalar_parameter(material, "Opacity", 0.6, -300, 250)
+        lib.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+
+    lib.recompile_material(material)
+    assets.save_loaded_asset(material)
+
+
 missing_texture()
 quake_surface("M_Quake", masked=False)
 quake_surface("M_QuakeMasked", masked=True)
 quake_sky()
+quake_liquid("M_QuakeLiquid", translucent=False)
+quake_liquid("M_QuakeLiquidTranslucent", translucent=True)

@@ -171,8 +171,8 @@ namespace
 
 	/**
 	 * The material for a texture: the one of the material tables, or a material instance of the project's sky,
-	 * masked ('{') or surface material with the layers of the texture. A texture that is in no wad gets the missing
-	 * texture as albedo.
+	 * liquid ('*'), masked ('{') or surface material with the layers of the texture. A texture that is in no wad
+	 * gets the missing texture as albedo.
 	 */
 	UMaterialInterface* MaterialFor(FImport& Import, const FString& TextureName)
 	{
@@ -184,6 +184,7 @@ namespace
 		const FQuakeWadTexture* Texture = Import.FindTexture(TextureName);
 		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
 		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
+		const bool bLiquid = TextureName.StartsWith(TEXT("*"));
 		if (bSky)
 		{
 			Import.SkyTextures.Add(TextureName);
@@ -202,8 +203,10 @@ namespace
 		}
 
 		const ULibQuakeSettings* Settings = GetDefault<ULibQuakeSettings>();
-		const TSoftObjectPtr<UMaterialInterface>& Parent =
-			bSky ? Settings->SkyMaterial : bAlpha ? Settings->MaskedMaterial : Settings->SurfaceMaterial;
+		const TSoftObjectPtr<UMaterialInterface>& Parent = bSky ? Settings->SkyMaterial
+			: bLiquid ? Settings->LiquidMaterial
+			: bAlpha ? Settings->MaskedMaterial
+			: Settings->SurfaceMaterial;
 
 		bool bCreated = false;
 		UMaterialInstanceConstant* Material = Import.Asset<UMaterialInstanceConstant>(
@@ -359,6 +362,32 @@ namespace
 		return Found != Entity.attributes.end() ? ToFString(Found->second) : FString();
 	}
 
+	/** The liquid brushes of an entity, relative to its pivot like its mesh. */
+	TArray<FQuakeLiquid> Liquids(const quakelib::EntityGeometry& Geometry, float Scale)
+	{
+		TArray<FQuakeLiquid> Liquids;
+		for (const quakelib::CollisionHull& Hull : Geometry.hulls)
+		{
+			if (Hull.type != quakelib::CollisionHull::Type::Liquid)
+			{
+				continue;
+			}
+
+			FQuakeLiquid& Liquid = Liquids.AddDefaulted_GetRef();
+			Liquid.Texture = ToFString(Hull.textureName);
+			for (const quakelib::Vec3& Point : Hull.points)
+			{
+				Liquid.Points.Add(FVector(LibQuake::ToUnrealPosition(Point, Scale)));
+			}
+			// mirrored like the meshes, the second and third corner swap places
+			for (size_t i = 0; i + 2 < Hull.indices.size(); i += 3)
+			{
+				Liquid.Indices.Append({(int32)Hull.indices[i], (int32)Hull.indices[i + 2], (int32)Hull.indices[i + 1]});
+			}
+		}
+		return Liquids;
+	}
+
 	/** TrenchBroom group names by group id ("_tb_id"), from the func_group entities that are groups. */
 	TMap<FString, FString> GroupNames(const quakelib::Level& Level)
 	{
@@ -422,6 +451,7 @@ namespace
 			// a brush entity stands at the pivot of its mesh
 			const quakelib::EntityGeometry& Geometry = Level.geometry[Entity.geometry];
 			Out.Transform = FTransform(FVector(LibQuake::ToUnrealPosition(Geometry.pivot, Scale)));
+			Out.Liquids = Liquids(Geometry, Scale);
 
 			const FString Name =
 				LibQuakeEditor::UniqueAssetName(MeshName(Entity, Groups, ClassCount), Import.UsedNames);

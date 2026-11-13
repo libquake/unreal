@@ -10,6 +10,7 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 | `clip`, `trigger` | collision only |
 | `skip`, `hint`, `hintskip`, `nodraw`, `caulk`, `origin` | neither drawn nor solid |
 | `sky...` | `M_QuakeSky`, see [Lighting](lighting.md) |
+| `*...` | `M_QuakeLiquid`, see [Liquids](#liquids) |
 | `{...` | `M_QuakeMasked`, transparent where the palette index is 255 |
 | everything else | `M_Quake`, fullbright pixels as emissive, matte (roughness 1, specular 0) like in Quake |
 
@@ -26,6 +27,22 @@ A material table replaces the instance for some textures, e.g. `*water*` with a 
 sky of the game. Names ending in `*` are prefixes as for the entity classes. The `Materials` of the
 [map settings](../reference/map-settings.md) come first, then the ones of the project settings. A reimport
 applies changes to the tables.
+
+## Liquids
+
+A brush with a texture starting with `*` is a liquid, like in Quake: `*lava...` is lava, `*slime...` slime, every
+other one water, `*teleport` included. It is no wall, the collision leaves it out.
+
+Its faces get `M_QuakeLiquid`: unlit like in Quake, where liquids have no lightmap, two sided so they show from
+below, and warped by Quake's turbulence. Its parameters are `Brightness`, `WarpAmount` (in texels, 8 like Quake) and
+`WarpSpeed`. `M_QuakeLiquidTranslucent` is the same with `Opacity`, set it as `LiquidMaterial` in the
+[project settings](../reference/project-settings.md) to see the floor through the water.
+
+Each liquid brush of a placed map also gets a volume of its shape, an `AQuakeLiquidVolume`: a water volume,
+characters swim in it. Its `QuakeEntity` component has the keys `texture` and `liquid` (`water`, `slime` or
+`lava`), a Blueprint based on it can hurt in slime and lava. `LiquidClasses` in the project settings choose the
+volume class by texture name, `*lava*` to a lava volume for example. An entry without a class leaves those liquids
+without a volume.
 
 ## Mesh libraries
 

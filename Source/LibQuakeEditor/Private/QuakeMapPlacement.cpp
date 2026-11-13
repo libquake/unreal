@@ -1,8 +1,16 @@
 #include "QuakeMapPlacement.h"
 
+#include "BSPOps.h"
+#include "Components/BrushComponent.h"
 #include "Components/LightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Editor/EditorEngine.h"
+#include "Engine/Polys.h"
 #include "Engine/PostProcessVolume.h"
+#include "GameFramework/PhysicsVolume.h"
+#include "LibQuakeSettings.h"
+#include "Model.h"
+#include "QuakeNameTable.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
@@ -19,7 +27,7 @@ namespace
 {
 	const TCHAR* SunId = TEXT("sun");
 
-	/** What an actor of a placed map is made from: an entity or the sun of the worldspawn. */
+	/** What an actor of a placed map is made from: an entity, the sun of the worldspawn or a liquid brush. */
 	struct FEntitySpec
 	{
 		/** "<classname>_<n>" in map order, "sun" for the sun. */
@@ -37,7 +45,18 @@ namespace
 
 		/** The mesh of a brush entity, null for point entities. */
 		UStaticMesh* Mesh = nullptr;
+
+		/** A liquid brush of the entity, its volume. */
+		const FQuakeLiquid* Liquid = nullptr;
 	};
+
+	/** The volume class for a liquid texture, null for none. */
+	UClass* LiquidClass(const FString& Texture)
+	{
+		const TSoftClassPtr<APhysicsVolume>* Entry =
+			LibQuake::FindByName(GetDefault<ULibQuakeSettings>()->LiquidClasses, Texture);
+		return Entry && !Entry->IsNull() ? Entry->LoadSynchronous() : nullptr;
+	}
 
 	/** Every actor the map should have, in map order. Entities mapped to no class are left out. */
 	TArray<FEntitySpec> MakeSpecs(const UQuakeMap* Map)
@@ -75,6 +94,20 @@ namespace
 				Sun.Entity = &Entity;
 				Sun.bSun = true;
 				Specs.Add(Sun);
+			}
+
+			for (int32 Index = 0; Index < Entity.Liquids.Num(); Index++)
+			{
+				const FQuakeLiquid& Liquid = Entity.Liquids[Index];
+				if (UClass* VolumeClass = LiquidClass(Liquid.Texture))
+				{
+					FEntitySpec& Spec = Specs.AddDefaulted_GetRef();
+					Spec.Id = FString::Printf(TEXT("%s_liquid_%d"), *Id, Index);
+					Spec.Class = VolumeClass;
+					Spec.Transform = Entity.Transform;
+					Spec.Entity = &Entity;
+					Spec.Liquid = &Liquid;
+				}
 			}
 		}
 		return Specs;
@@ -130,6 +163,42 @@ namespace
 		return Mesh;
 	}
 
+	/** Gives a volume the convex shape of a liquid brush, rebuilt from scratch on every update. */
+	void SetupLiquidBrush(AVolume* Volume, const FQuakeLiquid& Liquid)
+	{
+		Volume->PreEditChange(nullptr);
+
+		UModel* Brush = NewObject<UModel>(Volume, NAME_None, RF_Transactional);
+		Brush->Initialize(nullptr, true);
+		Brush->Polys = NewObject<UPolys>(Brush, NAME_None, RF_Transactional);
+		for (int32 i = 0; i + 2 < Liquid.Indices.Num(); i += 3)
+		{
+			// brush polygons wind the other way round than mesh triangles, their normals point outside
+			FPoly Poly;
+			Poly.Init();
+			for (int32 Corner = 2; Corner >= 0; Corner--)
+			{
+				Poly.Vertices.Emplace(FVector3f(Liquid.Points[Liquid.Indices[i + Corner]]));
+			}
+			Poly.Base = Poly.Vertices[0];
+			if (Poly.Finalize(Volume, 1) == 0)
+			{
+				Brush->Polys->Element.Add(Poly);
+			}
+		}
+
+		// the hull comes as triangles, a face of the brush is one polygon
+		GEditor->bspMergeCoplanars(Brush, false, true);
+		Brush->Linked = 1;
+		FBSPOps::bspValidateBrush(Brush, false, false);
+		Brush->BuildBound();
+
+		Volume->Brush = Brush;
+		Volume->GetBrushComponent()->Brush = Brush;
+		FBSPOps::csgPrepMovingBrush(Volume);
+		Volume->PostEditChange();
+	}
+
 	/** A new actor for the spec, attached to the map actor. ApplySpec gives it its place and keys. */
 	AActor* SpawnEntityActor(AQuakeMapActor* MapActor, const FEntitySpec& Spec)
 	{
@@ -181,8 +250,16 @@ namespace
 		Keys->Modify();
 		Keys->EntityId = Spec.Id;
 		Keys->Scale = Map->Settings.Scale;
-		Keys->ClassName = Spec.bSun ? FString() : Spec.Entity->ClassName;
+		Keys->ClassName = Spec.bSun || Spec.Liquid ? FString() : Spec.Entity->ClassName;
 		Keys->Keys = Spec.Entity->Keys;
+		if (Spec.Liquid)
+		{
+			Keys->Keys = {
+				{TEXT("texture"), Spec.Liquid->Texture},
+				{TEXT("liquid"), LibQuake::LiquidKind(Spec.Liquid->Texture)},
+			};
+			SetupLiquidBrush(CastChecked<AVolume>(Actor), *Spec.Liquid);
+		}
 
 		// the plugin's lights follow the map, the lights of own classes keep what their Blueprint says
 		if (Actor->IsA<AQuakePointLight>() || Actor->IsA<AQuakeSun>())

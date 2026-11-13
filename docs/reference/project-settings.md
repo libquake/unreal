@@ -20,6 +20,7 @@ reimport keeps them.
 | Setting | |
 |---|---|
 | `TMap<FString, TSoftClassPtr<AActor>> EntityClasses` | actor class by entity class, see [Entities](../guide/entities.md). Comes with `light*` and `info_player_start` |
+| `TMap<FString, TSoftClassPtr<APhysicsVolume>> LiquidClasses` | volume class by liquid texture, see [Maps](../guide/maps.md#liquids). Comes with `*` for `AQuakeLiquidVolume` |
 
 ## Materials
 
@@ -28,6 +29,7 @@ reimport keeps them.
 | `SurfaceMaterial` | `M_Quake` | parent of the material instances, texture parameters `Albedo` and `Emissive`, scalar `EmissiveStrength` |
 | `MaskedMaterial` | `M_QuakeMasked` | the same for `{` textures, transparent where the alpha of `Albedo` is 0 |
 | `SkyMaterial` | `M_QuakeSky` | parent for sky textures, texture parameters `SkyBack` and `SkyFront` |
+| `LiquidMaterial` | `M_QuakeLiquid` | parent for liquid textures (`*`), texture parameter `Albedo`. `M_QuakeLiquidTranslucent` lets the floor show through |
 | `Materials` | empty | materials used as they are, by texture name or prefix, see [Maps](../guide/maps.md#materials) |
 
 ## Textures

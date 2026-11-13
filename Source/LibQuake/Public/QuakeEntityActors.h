@@ -4,6 +4,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/PhysicsVolume.h"
 #include "GameFramework/PlayerStart.h"
 #include "QuakeEntity.h"
 
@@ -48,6 +49,19 @@ public:
 	virtual void ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity) override;
 };
 
+/**
+ * A liquid brush as a water volume: characters swim in it. Its QuakeEntity component has the keys "texture" (e.g.
+ * "*lava1") and "liquid" ("water", "slime" or "lava"), Blueprints based on it can add damage for slime and lava.
+ */
+UCLASS(Blueprintable)
+class LIBQUAKE_API AQuakeLiquidVolume : public APhysicsVolume, public IQuakeEntity
+{
+	GENERATED_BODY()
+
+public:
+	virtual void ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity) override;
+};
+
 /** A point entity without a class of its own, keeps its place and keys for Blueprints mapped to it later. */
 UCLASS(Blueprintable)
 class LIBQUAKE_API AQuakePointEntity : public AActor
@@ -72,4 +86,7 @@ namespace LibQuake
 	 * square falloff.
 	 */
 	LIBQUAKE_API float ToUnrealBrightness(float Level);
+
+	/** "lava", "slime" or "water" for a liquid texture, by its name as in Quake. */
+	LIBQUAKE_API FString LiquidKind(const FString& Texture);
 }

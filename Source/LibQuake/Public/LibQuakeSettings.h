@@ -7,6 +7,7 @@
 
 #include "LibQuakeSettings.generated.h"
 
+class APhysicsVolume;
 class UMaterialInterface;
 class UTexture2D;
 
@@ -48,6 +49,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Entities")
 	TMap<FString, TSoftClassPtr<AActor>> EntityClasses;
 
+	/**
+	 * Volume classes for liquid brushes by texture name, names ending in '*' are prefixes ("*lava*" for lava). An
+	 * entry without a class or no entry leaves the liquid without a volume. Comes with "*" for AQuakeLiquidVolume.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Entities")
+	TMap<FString, TSoftClassPtr<APhysicsVolume>> LiquidClasses;
+
 	/** Parent of the material instances of plain textures. Needs the texture parameters Albedo and Emissive. */
 	UPROPERTY(Config, EditAnywhere, Category = "Materials")
 	TSoftObjectPtr<UMaterialInterface> SurfaceMaterial;
@@ -59,6 +67,13 @@ public:
 	/** Parent for sky textures. Needs the texture parameters SkyBack and SkyFront. */
 	UPROPERTY(Config, EditAnywhere, Category = "Materials")
 	TSoftObjectPtr<UMaterialInterface> SkyMaterial;
+
+	/**
+	 * Parent for liquid textures ('*'). Needs the texture parameter Albedo. The plugin's M_QuakeLiquid is opaque,
+	 * M_QuakeLiquidTranslucent lets the floor show through.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials")
+	TSoftObjectPtr<UMaterialInterface> LiquidMaterial;
 
 	/**
 	 * Materials used as they are instead of a material instance, by texture name, names ending in '*' are prefixes

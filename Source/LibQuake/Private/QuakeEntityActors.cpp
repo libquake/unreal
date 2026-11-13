@@ -60,6 +60,25 @@ void AQuakeSun::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
 	Light->MarkRenderStateDirty();
 }
 
+void AQuakeLiquidVolume::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
+{
+	Modify();
+	bWaterVolume = true;
+}
+
+FString LibQuake::LiquidKind(const FString& Texture)
+{
+	if (Texture.StartsWith(TEXT("*lava")))
+	{
+		return TEXT("lava");
+	}
+	if (Texture.StartsWith(TEXT("*slime")))
+	{
+		return TEXT("slime");
+	}
+	return TEXT("water");
+}
+
 AQuakePointEntity::AQuakePointEntity()
 {
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));

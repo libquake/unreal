@@ -8,6 +8,7 @@ ULibQuakeSettings::ULibQuakeSettings()
 {
 	EntityClasses.Add(TEXT("light*"), AQuakePointLight::StaticClass());
 	EntityClasses.Add(TEXT("info_player_start"), AQuakePlayerStart::StaticClass());
+	LiquidClasses.Add(TEXT("*"), AQuakeLiquidVolume::StaticClass());
 
 	SurfaceMaterial = TSoftObjectPtr<UMaterialInterface>(
 		FSoftObjectPath(TEXT("/LibQuake/Materials/M_Quake.M_Quake")));
@@ -15,6 +16,8 @@ ULibQuakeSettings::ULibQuakeSettings()
 		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeMasked.M_QuakeMasked")));
 	SkyMaterial = TSoftObjectPtr<UMaterialInterface>(
 		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeSky.M_QuakeSky")));
+	LiquidMaterial = TSoftObjectPtr<UMaterialInterface>(
+		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeLiquid.M_QuakeLiquid")));
 
 	MissingTexture = TSoftObjectPtr<UTexture2D>(
 		FSoftObjectPath(TEXT("/LibQuake/Textures/T_QuakeMissing.T_QuakeMissing")));

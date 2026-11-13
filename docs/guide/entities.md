@@ -16,7 +16,8 @@ It comes with the plugin's classes:
 Entities without an entry get a static mesh actor if they are brush entities and an `AQuakePointEntity`, an empty
 actor with a sprite, otherwise. A worldspawn with `_sunlight` adds an `AQuakeSun`.
 
-A name ending in `*` is a prefix: `light*` covers `light`, `light_fluoro`, `light_torch_small_walltorch` and so on.
+A name ending in `*` is a prefix: `light*` covers `light`, `light_fluoro`, `light_torch_small_walltorch` and so on,
+`*` alone every class.
 An exact name wins over a prefix, a longer prefix over a shorter one. Brush entities mapped to a class get their
 mesh as an extra component `QuakeMesh`.
 
