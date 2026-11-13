@@ -14,11 +14,9 @@ In Quake a surface at light level 128 shows its texture as it is. The light tool
 0.5), and a light fades linearly from its value at the center to 0 at the radius, which is the value in Quake
 units. Unreal fades by (1 - d²/r²)^exponent without inverse square falloff, an exponent of 2 is close to linear.
 The intensity is `light · 0.5 / 128 · π · 1.2` (unitless), the sun gets the same in lux from `_sunlight`. A lit
-surface shows albedo / π times the light in Unreal, and the factor 1.2 matches the exposure the map brings along:
-the map gets an unbound post process volume `exposure` with manual exposure and a bias of 0. Without it
-Unreal's auto exposure brightens dark rooms and darkens lit ones, which flattens the light of a Quake map. To use
-the exposure of your own level, turn off `bManualExposure` in the [map settings](../reference/map-settings.md),
-placed maps lose the volume with the next reimport or Rebuild.
+surface shows albedo / π times the light in Unreal, and the factor 1.2 matches a manual exposure with EV100 0
+(a post process volume with Metering Mode Manual, Apply Physical Camera Exposure off and Exposure Compensation
+0). Exposure, ambient light and grading are left to the level, the plugin does not touch them.
 
 Before a lighting build the editor shows static lights as a preview without shadows.
 

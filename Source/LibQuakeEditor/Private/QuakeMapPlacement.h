@@ -16,7 +16,7 @@ namespace LibQuakeEditor
 	 * to its class name, or a static mesh actor for brush entities and an AQuakePointEntity otherwise. An entity
 	 * keeps its actor while the class stays the same, actors of entities that are gone are deleted. The actor's
 	 * place, mesh and keys are set and actors implementing IQuakeEntity apply the keys. The worldspawn adds a sun
-	 * ("_sunlight") and the map an exposure volume (bManualExposure).
+	 * ("_sunlight").
 	 */
 	void SyncMapActor(AQuakeMapActor* MapActor);
 }

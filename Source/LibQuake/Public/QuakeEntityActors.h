@@ -67,8 +67,8 @@ private:
 namespace LibQuake
 {
 	/**
-	 * Unreal brightness that shows a surface like the Quake light level Level * 0.5 does under the exposure a placed
-	 * map brings along: lux for a directional light, the intensity at the center of a point light without inverse
+	 * Unreal brightness that shows a surface like the Quake light level Level * 0.5 does under a manual exposure
+	 * with EV100 0: lux for a directional light, the intensity at the center of a point light without inverse
 	 * square falloff.
 	 */
 	LIBQUAKE_API float ToUnrealBrightness(float Level);

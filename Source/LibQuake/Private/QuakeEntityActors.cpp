@@ -6,7 +6,7 @@
 #include "Components/PointLightComponent.h"
 #include "QuakeEntityComponent.h"
 
-// A lit surface shows albedo / pi * the light in Unreal, the manual exposure of a placed map divides by 1.2.
+// A lit surface shows albedo / pi * the light in Unreal, a manual exposure with EV100 0 divides by 1.2.
 float LibQuake::ToUnrealBrightness(float Level)
 {
 	return Level * 0.5f / 128.0f * UE_PI * 1.2f;

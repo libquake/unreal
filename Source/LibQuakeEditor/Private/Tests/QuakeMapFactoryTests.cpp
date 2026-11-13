@@ -5,7 +5,6 @@
 #include "Editor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
-#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
@@ -138,25 +137,19 @@ bool FQuakeMapPlaceTest::RunTest(const FString& Parameters)
 	const TArray<AActor*> Actors = MapActor->GetEntityActors();
 	int32 Meshes = 0;
 	int32 Lights = 0;
-	int32 Exposures = 0;
 	for (const AActor* Actor : Actors)
 	{
 		Meshes += Actor->IsA<AStaticMeshActor>();
 		Lights += Actor->IsA<AQuakePointLight>();
-		Exposures += Actor->IsA<APostProcessVolume>();
 	}
 	TestEqual(TEXT("an actor per mesh"), Meshes, Map->Meshes.Num());
 	TestTrue(TEXT("lights get the plugin's light"), Lights > 0);
-	TestEqual(TEXT("one exposure volume"), Exposures, 1);
-	TestEqual(TEXT("an actor per entity"), Actors.Num() - Exposures, Map->Entities.Num());
+	TestEqual(TEXT("an actor per entity"), Actors.Num(), Map->Entities.Num());
 	for (const AActor* Actor : Actors)
 	{
 		const UQuakeEntityComponent* Entity = Actor->FindComponentByClass<UQuakeEntityComponent>();
 		TestFalse(TEXT("every actor has an id"), Entity->EntityId.IsEmpty());
-		if (!Actor->IsA<APostProcessVolume>())
-		{
-			TestEqual(TEXT("classname is among the keys"), Entity->GetKey(TEXT("classname")), Entity->ClassName);
-		}
+		TestEqual(TEXT("classname is among the keys"), Entity->GetKey(TEXT("classname")), Entity->ClassName);
 	}
 
 	const FQuakeMapEntity* Light = Map->Entities.FindByPredicate(

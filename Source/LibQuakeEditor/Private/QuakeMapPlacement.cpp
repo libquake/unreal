@@ -1,7 +1,6 @@
 #include "QuakeMapPlacement.h"
 
 #include "Components/StaticMeshComponent.h"
-#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
@@ -17,15 +16,14 @@
 namespace
 {
 	const TCHAR* SunId = TEXT("sun");
-	const TCHAR* ExposureId = TEXT("exposure");
 
-	/** What an actor of a placed map is made from: an entity, the sun of the worldspawn or the exposure volume. */
+	/** What an actor of a placed map is made from: an entity or the sun of the worldspawn. */
 	struct FEntitySpec
 	{
 		FString Id;
 		UClass* Class = nullptr;
 		FTransform Transform;
-		/** Null for the exposure volume. The sun gets the keys of the worldspawn. */
+		/** The sun gets the keys of the worldspawn. */
 		const FQuakeMapEntity* Entity = nullptr;
 		bool bSun = false;
 		UStaticMesh* Mesh = nullptr;
@@ -57,12 +55,6 @@ namespace
 				Sun.bSun = true;
 				Specs.Add(Sun);
 			}
-		}
-		if (Map->Settings.bManualExposure)
-		{
-			FEntitySpec& Exposure = Specs.AddDefaulted_GetRef();
-			Exposure.Id = ExposureId;
-			Exposure.Class = APostProcessVolume::StaticClass();
 		}
 		return Specs;
 	}
@@ -115,20 +107,6 @@ namespace
 		return Mesh;
 	}
 
-	/** Fixed exposure for the whole level, the brightness of the lights is calibrated to it. */
-	void SetupExposure(APostProcessVolume* Volume)
-	{
-		Volume->Modify();
-		Volume->bUnbound = true;
-		FPostProcessSettings& Settings = Volume->Settings;
-		Settings.bOverride_AutoExposureMethod = true;
-		Settings.AutoExposureMethod = AEM_Manual;
-		Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
-		Settings.AutoExposureApplyPhysicalCameraExposure = false;
-		Settings.bOverride_AutoExposureBias = true;
-		Settings.AutoExposureBias = 0.0f;
-	}
-
 	AActor* SpawnEntityActor(AQuakeMapActor* MapActor, const FEntitySpec& Spec)
 	{
 		FActorSpawnParameters Parameters;
@@ -173,13 +151,9 @@ namespace
 		Keys->Modify();
 		Keys->EntityId = Spec.Id;
 		Keys->Scale = Map->Settings.Scale;
-		Keys->ClassName = Spec.Entity && !Spec.bSun ? Spec.Entity->ClassName : FString();
-		Keys->Keys = Spec.Entity ? Spec.Entity->Keys : TMap<FString, FString>();
+		Keys->ClassName = Spec.bSun ? FString() : Spec.Entity->ClassName;
+		Keys->Keys = Spec.Entity->Keys;
 
-		if (Spec.Id == ExposureId)
-		{
-			SetupExposure(CastChecked<APostProcessVolume>(Actor));
-		}
 		if (Actor->Implements<UQuakeEntity>())
 		{
 			// without the guard Unreal drops events on actors of the editor world
