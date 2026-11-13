@@ -11,11 +11,33 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 | `skip`, `hint`, `hintskip`, `nodraw`, `caulk`, `origin` | neither drawn nor solid |
 | `sky...` | `M_QuakeSky`, see [Lighting](lighting.md) |
 | `*...` | `M_QuakeLiquid`, see [Liquids](#liquids) |
-| `{...` | `M_QuakeMasked`, transparent where the palette index is 255 |
+| `{...` | `M_QuakeMasked`, transparent where the palette index is 255, images with transparent pixels too |
 | everything else | `M_Quake`, fullbright pixels as emissive, matte (roughness 1, specular 0) like in Quake |
 
 Brush entities without visible faces, like triggers, get a mesh made of their brush hulls. It is never drawn, it
 is there for collision and overlaps.
+
+## Textures and materials
+
+For every texture of the map the import takes the first of these that has it:
+
+1. **Material tables**: `Materials` in the [map settings](../reference/map-settings.md), then in the project
+   settings. The material is used as it is.
+2. **Material folders**: a material named like the texture in `MaterialFolder` of the map, then of the project.
+   Used as it is.
+3. **Texture folders**: a texture asset named like the texture in `TextureFolder` of the map, then of the project.
+   `<name>_emission` next to it is the emission, `<name>_front` the cloud layer of a sky.
+4. **Image files** in `textures/` next to the maps, see [Getting started](getting-started.md#image-files).
+5. **Wads**: the imported wads, the ones in the map's `wad` key first. A `.bsp` brings its own textures instead
+   of image files and wads.
+6. **Missing texture**: a grey grid, reported in the Message Log.
+
+Folders are searched with their sub folders. A texture name with a path, `base/wall1`, is `wall1` in the sub
+folder `base`, a name without one is found in any sub folder. In folders and asset names `*` becomes `_`
+(`*water1` is `_water1`), image files may use `#` for it as Quake engines do.
+
+The texture uvs follow the size of the texture. A texture that only has a material from a table or a material
+folder takes the size of the material's `Albedo` parameter, or of the first texture the material uses.
 
 ## Materials
 
@@ -23,10 +45,10 @@ Each texture gets a material instance `MI_<texture>` of the project's surface, m
 [project settings](../reference/project-settings.md). Artists who want their own look set their own parent
 materials there, with the same parameters.
 
-A material table replaces the instance for some textures, e.g. `*water*` with a water material or `sky*` with a
-sky of the game. Names ending in `*` are prefixes as for the entity classes. The `Materials` of the
-[map settings](../reference/map-settings.md) come first, then the ones of the project settings. A reimport
-applies changes to the tables.
+A material table or a material folder replaces the instance for some textures, e.g. `*water*` with a water
+material or `sky*` with a sky of the game. Names ending in `*` are prefixes as for the entity classes. The
+`Materials` of the [map settings](../reference/map-settings.md) come first, then the ones of the project settings.
+A reimport applies changes to the tables.
 
 ## Liquids
 

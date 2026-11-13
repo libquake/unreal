@@ -12,6 +12,8 @@
 | `float LuxelSize` | 16 | Quake units per lightmap texel, sets the lightmap resolution of the meshes |
 | `EComponentMobility LightMobility` | Static | mobility of the plugin's lights in placed maps, Movable for Lumen |
 | `TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials` | empty | materials by texture name or prefix, before the project's, see [Maps](../guide/maps.md#materials) |
+| `FDirectoryPath MaterialFolder` | empty | materials named like the textures, before the project's, see [Maps](../guide/maps.md#textures-and-materials) |
+| `FDirectoryPath TextureFolder` | empty | texture assets named like the textures, before the project's and the image files |
 | `UQuakeEntityClasses* EntityClasses` | none | actor classes for entity classes of this map, before the project's, see [Entities](../guide/entities.md) |
 
 ## Generated

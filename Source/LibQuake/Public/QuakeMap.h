@@ -71,6 +71,20 @@ struct LIBQUAKE_API FQuakeMapSettings
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Materials")
 	TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials;
 
+	/**
+	 * Materials named like the textures, used as they are. Searched with sub folders, after the material tables and
+	 * before the project's MaterialFolder.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Materials", meta = (ContentDir))
+	FDirectoryPath MaterialFolder;
+
+	/**
+	 * Textures named like the map's, before the project's TextureFolder and the wads. Searched with sub folders,
+	 * "base/wall1" is wall1 in the sub folder base.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Materials", meta = (ContentDir))
+	FDirectoryPath TextureFolder;
+
 	/** Actor classes for entity classes of this map, they come before the ones in the project settings. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Entities")
 	TObjectPtr<UQuakeEntityClasses> EntityClasses;

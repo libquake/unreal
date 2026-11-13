@@ -1,0 +1,49 @@
+// the same cube in four entities, the textures come from a texture folder, a sub folder of it, a material
+// folder and an image file in textures/ next to the map's folder
+{
+"classname" "worldspawn"
+}
+{
+"classname" "func_wall"
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) folder_tex 0 0 0 1 1
+( 64 0 0 ) ( 64 0 1 ) ( 64 1 0 ) folder_tex 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) folder_tex 0 0 0 1 1
+( 0 64 0 ) ( 1 64 0 ) ( 0 64 1 ) folder_tex 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) folder_tex 0 0 0 1 1
+( 0 0 64 ) ( 0 1 64 ) ( 1 0 64 ) folder_tex 0 0 0 1 1
+}
+}
+{
+"classname" "func_wall"
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) base/sub_tex 0 0 0 1 1
+( 64 0 0 ) ( 64 0 1 ) ( 64 1 0 ) base/sub_tex 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) base/sub_tex 0 0 0 1 1
+( 0 64 0 ) ( 1 64 0 ) ( 0 64 1 ) base/sub_tex 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) base/sub_tex 0 0 0 1 1
+( 0 0 64 ) ( 0 1 64 ) ( 1 0 64 ) base/sub_tex 0 0 0 1 1
+}
+}
+{
+"classname" "func_wall"
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) mat_tex 0 0 0 1 1
+( 64 0 0 ) ( 64 0 1 ) ( 64 1 0 ) mat_tex 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) mat_tex 0 0 0 1 1
+( 0 64 0 ) ( 1 64 0 ) ( 0 64 1 ) mat_tex 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) mat_tex 0 0 0 1 1
+( 0 0 64 ) ( 0 1 64 ) ( 1 0 64 ) mat_tex 0 0 0 1 1
+}
+}
+{
+"classname" "func_wall"
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) disk/file_tex 0 0 0 1 1
+( 64 0 0 ) ( 64 0 1 ) ( 64 1 0 ) disk/file_tex 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) disk/file_tex 0 0 0 1 1
+( 0 64 0 ) ( 1 64 0 ) ( 0 64 1 ) disk/file_tex 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) disk/file_tex 0 0 0 1 1
+( 0 0 64 ) ( 0 1 64 ) ( 1 0 64 ) disk/file_tex 0 0 0 1 1
+}
+}

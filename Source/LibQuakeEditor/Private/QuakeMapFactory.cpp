@@ -1,6 +1,7 @@
 #include "QuakeMapFactory.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Engine/StaticMesh.h"
 #include "GeneratedAssets.h"
@@ -15,6 +16,7 @@
 #include "QuakeNameTable.h"
 #include "QuakeWad.h"
 #include "StaticMeshAttributes.h"
+#include "TextureFiles.h"
 #include "UObject/Package.h"
 
 namespace
@@ -124,6 +126,107 @@ namespace
 		TArray<FAssetData> Others;
 	};
 
+	/**
+	 * Assets of one class in content folders, by the Quake name of a texture. "base/wall1" is wall1 in the sub
+	 * folder base, a name without a path is found in any sub folder. The folders are searched in the order added.
+	 */
+	template <typename T>
+	class FFolderLookup
+	{
+	public:
+		void Add(const FDirectoryPath& Folder)
+		{
+			const FString Root = Folder.Path.TrimChar(TEXT('/'));
+			if (Root.IsEmpty())
+			{
+				return;
+			}
+
+			FARFilter Filter;
+			Filter.PackagePaths.Add(*(TEXT("/") + Root));
+			Filter.bRecursivePaths = true;
+			Filter.ClassPaths.Add(T::StaticClass()->GetClassPathName());
+			Filter.bRecursiveClasses = true;
+			TArray<FAssetData> Found;
+			IAssetRegistry::GetChecked().GetAssets(Filter, Found);
+
+			// sorted, so a name in several sub folders always finds the same asset
+			Found.Sort([](const FAssetData& A, const FAssetData& B)
+			{
+				return A.PackageName.LexicalLess(B.PackageName);
+			});
+			for (const FAssetData& Asset : Found)
+			{
+				const FString Name = Asset.AssetName.ToString();
+				const FString SubFolder = Asset.PackagePath.ToString().RightChop(Root.Len() + 1).TrimChar(TEXT('/'));
+				if (!SubFolder.IsEmpty() && !Assets.Contains(SubFolder / Name))
+				{
+					Assets.Add(SubFolder / Name, Asset);
+				}
+				if (!Assets.Contains(Name))
+				{
+					Assets.Add(Name, Asset);
+				}
+			}
+		}
+
+		T* Find(const FString& QuakeName) const
+		{
+			const FString Path = FPaths::GetPath(QuakeName);
+			const FString Name = LibQuakeEditor::AssetName(FPaths::GetCleanFilename(QuakeName));
+			const FAssetData* Asset = Assets.Find(Path.IsEmpty() ? Name : Path / Name);
+			return Asset ? Cast<T>(Asset->GetAsset()) : nullptr;
+		}
+
+	private:
+		/** By name and by path below the folder, case does not matter as for Quake's names. */
+		TMap<FString, FAssetData> Assets;
+	};
+
+	/**
+	 * The textures of the texture folders as wad textures: "<name>_emission" is the emission, a sky gets
+	 * "<name>_front" as cloud layer or the texture itself.
+	 */
+	class FTextureFolders
+	{
+	public:
+		void Add(const FDirectoryPath& Folder)
+		{
+			Textures.Add(Folder);
+		}
+
+		const FQuakeWadTexture* Find(const FString& Name)
+		{
+			if (const TUniquePtr<FQuakeWadTexture>* Known = Entries.Find(Name))
+			{
+				return Known->Get();
+			}
+
+			TUniquePtr<FQuakeWadTexture> Entry;
+			if (UTexture2D* Texture = Textures.Find(Name))
+			{
+				const FString BaseName = FPaths::GetCleanFilename(Name);
+				Entry = MakeUnique<FQuakeWadTexture>();
+				Entry->Name = Name;
+				Entry->Texture = Texture;
+				Entry->Emission = Textures.Find(Name + TEXT("_emission"));
+				Entry->bAlpha = BaseName.StartsWith(TEXT("{"));
+				if (BaseName.StartsWith(TEXT("sky")))
+				{
+					UTexture2D* Front = Textures.Find(Name + TEXT("_front"));
+					Entry->SkyFront = Front ? Front : Texture;
+				}
+			}
+			return Entries.Add(Name, MoveTemp(Entry)).Get();
+		}
+
+	private:
+		FFolderLookup<UTexture2D> Textures;
+
+		/** Every name asked for so far, null for the ones not in the folders. */
+		TMap<FString, TUniquePtr<FQuakeWadTexture>> Entries;
+	};
+
 	/** State of one import. */
 	struct FImport
 	{
@@ -135,6 +238,11 @@ namespace
 
 		/** The texture with a Quake name, from the wads for a map and from the file itself for a bsp. */
 		TFunction<const FQuakeWadTexture*(const FString&)> FindTexture;
+
+		/** The map's and the project's folders and the image files of a .map, they come before FindTexture. */
+		FTextureFolders TextureFolders;
+		LibQuakeEditor::FTextureFiles TextureFiles;
+		FFolderLookup<UMaterialInterface> MaterialFolders;
 
 		/** One material instance per texture name. */
 		TMap<FString, UMaterialInterface*> Materials;
@@ -150,6 +258,17 @@ namespace
 			UPackage* Package = LibQuakeEditor::FindOrCreatePackage(Folder / Name);
 			return LibQuakeEditor::FindOrCreateAsset<T>(Package, Name, bOutCreated);
 		}
+
+		/** The texture from the texture folders, an image file, the wads or the bsp. Null if it is in none of them. */
+		const FQuakeWadTexture* Texture(const FString& Name)
+		{
+			if (const FQuakeWadTexture* InFolder = TextureFolders.Find(Name))
+			{
+				return InFolder;
+			}
+			const FQuakeWadTexture* File = TextureFiles.Find(Name);
+			return File ? File : FindTexture(Name);
+		}
 	};
 
 	/** The texture of the project settings for textures that are in no wad, null if there is none. */
@@ -158,15 +277,55 @@ namespace
 		return GetDefault<ULibQuakeSettings>()->MissingTexture.LoadSynchronous();
 	}
 
-	/** The material of the map's or the project's material table for a texture, null if neither has one. */
-	UMaterialInterface* MaterialOverride(const UQuakeMap* Map, const FString& TextureName)
+	/**
+	 * The material used as it is for a texture: from the map's or the project's material table, else from the
+	 * material folders. Null if none has one.
+	 */
+	UMaterialInterface* MaterialOverride(const FImport& Import, const FString& TextureName)
 	{
-		const TSoftObjectPtr<UMaterialInterface>* Entry = LibQuake::FindByName(Map->Settings.Materials, TextureName);
+		const TSoftObjectPtr<UMaterialInterface>* Entry =
+			LibQuake::FindByName(Import.Map->Settings.Materials, TextureName);
 		if (!Entry)
 		{
 			Entry = LibQuake::FindByName(GetDefault<ULibQuakeSettings>()->Materials, TextureName);
 		}
-		return Entry ? Entry->LoadSynchronous() : nullptr;
+		return Entry ? Entry->LoadSynchronous() : Import.MaterialFolders.Find(TextureName);
+	}
+
+	/** The texture a material shows: its Albedo parameter, else the first texture it uses. */
+	UTexture* MaterialTexture(const UMaterialInterface* Material)
+	{
+		UTexture* Albedo = nullptr;
+		if (Material->GetTextureParameterValue(FHashedMaterialParameterInfo(TEXT("Albedo")), Albedo) && Albedo)
+		{
+			return Albedo;
+		}
+		TArray<UTexture*> Used;
+		Material->GetUsedTextures(Used);
+		return Used.IsEmpty() ? nullptr : Used[0];
+	}
+
+	/**
+	 * Size in pixels for the uvs of a texture: of the texture, else of the material it gets, else of the missing
+	 * texture. Faces without a size would have no uvs and no tangents, so there is always one.
+	 */
+	FIntPoint TextureSize(FImport& Import, const FString& TextureName)
+	{
+		const UTexture* Texture = nullptr;
+		if (const FQuakeWadTexture* Found = Import.Texture(TextureName))
+		{
+			Texture = Found->Texture;
+		}
+		if (!Texture)
+		{
+			const UMaterialInterface* Override = MaterialOverride(Import, TextureName);
+			Texture = Override ? MaterialTexture(Override) : nullptr;
+		}
+		if (!Texture)
+		{
+			Texture = MissingTexture();
+		}
+		return Texture ? FIntPoint(Texture->Source.GetSizeX(), Texture->Source.GetSizeY()) : FIntPoint(64, 64);
 	}
 
 	/**
@@ -216,7 +375,7 @@ namespace
 			return *Existing;
 		}
 
-		const FQuakeWadTexture* Texture = Import.FindTexture(TextureName);
+		const FQuakeWadTexture* Texture = Import.Texture(TextureName);
 		const bool bSky = Texture ? Texture->SkyFront != nullptr : TextureName.StartsWith(TEXT("sky"));
 		const bool bAlpha = Texture ? Texture->bAlpha : TextureName.StartsWith(TEXT("{"));
 		const bool bLiquid = TextureName.StartsWith(TEXT("*"));
@@ -225,7 +384,7 @@ namespace
 			Import.SkyTextures.Add(TextureName);
 		}
 
-		if (UMaterialInterface* Override = MaterialOverride(Import.Map, TextureName))
+		if (UMaterialInterface* Override = MaterialOverride(Import, TextureName))
 		{
 			Import.Materials.Add(TextureName, Override);
 			return Override;
@@ -547,12 +706,8 @@ namespace
 		Options.mergeGroups = IsMeshLibrary(Import.Map, Document);
 		Options.textureSize = [&Import](const std::string& Name) -> std::pair<int, int>
 		{
-			// a missing texture gets a size anyway, without one its faces have no uvs and no tangents
-			const FQuakeWadTexture* Found = Import.FindTexture(ToFString(Name));
-			const UTexture2D* Texture = Found ? Found->Texture.Get() : MissingTexture();
-			return Texture
-				? std::pair<int, int>(Texture->Source.GetSizeX(), Texture->Source.GetSizeY())
-				: std::pair<int, int>(64, 64);
+			const FIntPoint Size = TextureSize(Import, ToFString(Name));
+			return {Size.X, Size.Y};
 		};
 		return LibQuake::BuildMap(Document, Options, OutLevel, OutError);
 	}
@@ -671,11 +826,21 @@ bool UQuakeMapFactory::ImportMap(UQuakeMap* Map, const FString& Filename)
 	Import.Filename = Filename;
 	Import.Folder = LibQuakeEditor::GeneratedFolder(Map);
 
+	const ULibQuakeSettings* Settings = GetDefault<ULibQuakeSettings>();
+	Import.TextureFolders.Add(Map->Settings.TextureFolder);
+	Import.TextureFolders.Add(Settings->TextureFolder);
+	Import.MaterialFolders.Add(Map->Settings.MaterialFolder);
+	Import.MaterialFolders.Add(Settings->MaterialFolder);
+
 	FString Error;
 	quakelib::Level Level;
 	// the textures of a bsp, Import.FindTexture looks them up while the meshes are built
 	TArray<FQuakeWadTexture> BspTextures;
 	const bool bBsp = FPaths::GetExtension(Filename).Equals(TEXT("bsp"), ESearchCase::IgnoreCase);
+	if (!bBsp)
+	{
+		Import.TextureFiles.Init(Filename, Settings->TextureFilesFolder.Path);
+	}
 	if (!(bBsp ? BuildFromBsp(Import, BspTextures, Level, Error) : BuildFromMap(Import, Level, Error)))
 	{
 		LibQuakeEditor::ReportError(Filename, Error);

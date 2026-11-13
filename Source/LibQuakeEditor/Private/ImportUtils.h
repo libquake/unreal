@@ -4,6 +4,7 @@
 
 class UPackage;
 class UTexture2D;
+struct FImage;
 
 namespace LibQuakeEditor
 {
@@ -19,11 +20,17 @@ namespace LibQuakeEditor
 		return bOutCreated ? NewObject<T>(Package, *Name, RF_Public | RF_Standalone | RF_Transactional) : Asset;
 	}
 
-	/** Writes RGBA pixels (rows top to bottom) as a texture asset, point filtered and uncompressed like in Quake. */
+	/** Writes a BGRA8 image as a texture asset, point filtered and uncompressed like in Quake. */
+	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, const FImage& Image);
+
+	/** The same for RGBA pixels, rows top to bottom. */
 	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
 		const TArray<uint8>& Rgba);
 
 	/** Asset and package name for a Quake name, which may contain characters assets cannot have ('*', '{'). */
+	FString AssetName(const FString& QuakeName);
+
+	/** AssetName with a number appended if the import has given out that name already. */
 	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used);
 
 	/** "x y z" from an entity key, missing values are 0. */

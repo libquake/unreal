@@ -13,6 +13,7 @@ public class LibQuakeEditor : ModuleRules
 			"AssetRegistry",
 			"AssetTools",
 			"BSPUtils",
+			"ImageCore",
 			"ContentBrowser",
 			"LibQuake",
 			"LibQuakeCore",

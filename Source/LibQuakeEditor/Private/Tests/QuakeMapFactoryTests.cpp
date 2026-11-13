@@ -6,6 +6,7 @@
 #include "Components/DirectionalLightComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Editor.h"
+#include "EditorFramework/AssetImportData.h"
 #include "EditorReimportHandler.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
@@ -15,12 +16,18 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
 #include "GeneratedAssets.h"
+#include "HAL/FileManager.h"
+#include "ImageCore.h"
+#include "ImageUtils.h"
+#include "ImportUtils.h"
 #include "Interfaces/IPluginManager.h"
 #include "LibQuakeSettings.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Materials/MaterialInterface.h"
+#include "MeshDescription.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "QuakeEntityActors.h"
 #include "QuakeEntityClasses.h"
@@ -33,6 +40,7 @@
 #include "QuakeTriggerProbe.h"
 #include "QuakeWad.h"
 #include "QuakeWadFactory.h"
+#include "StaticMeshAttributes.h"
 #include "UObject/Package.h"
 
 namespace
@@ -43,8 +51,18 @@ namespace
 		return FPaths::ConvertRelativePathToFull(FPaths::Combine(Base, TEXT("Tests"), TEXT("Data"), Name));
 	}
 
+	/** Imports with the plugin's defaults for new maps, whatever the project has set. */
 	UQuakeMap* ImportTestMap(const TCHAR* Name, const TCHAR* File = TEXT("sky_alpha.map"))
 	{
+		ULibQuakeSettings* Settings = GetMutableDefault<ULibQuakeSettings>();
+		const FQuakeMapSettings Defaults;
+		TGuardValue<float> Scale(Settings->DefaultScale, Defaults.Scale);
+		TGuardValue<bool> CSG(Settings->bDefaultCSG, Defaults.bCSG);
+		TGuardValue<EQuakePivot> Pivot(Settings->DefaultPivot, Defaults.Pivot);
+		TGuardValue<float> LuxelSize(Settings->DefaultLuxelSize, Defaults.LuxelSize);
+		TGuardValue<TEnumAsByte<EComponentMobility::Type>> Mobility(Settings->DefaultLightMobility,
+			Defaults.LightMobility);
+
 		bool bCanceled = false;
 		NewObject<UQuakeWadFactory>()->FactoryCreateFile(UQuakeWad::StaticClass(),
 			CreatePackage(TEXT("/Game/LibQuakeTests/sky_alpha")), TEXT("sky_alpha"), RF_Public | RF_Standalone,
@@ -62,6 +80,45 @@ namespace
 			return Entity && Entity->ClassName == ClassName;
 		});
 		return Found ? *Found : nullptr;
+	}
+
+	/** The largest texture coordinates of a mesh: a 64 unit cube shows 64 / the size of its texture. */
+	FVector2f UVExtent(const UStaticMesh* Mesh)
+	{
+		const FMeshDescription* Description = Mesh->GetMeshDescription(0);
+		const TVertexInstanceAttributesConstRef<FVector2f> UVs =
+			FStaticMeshConstAttributes(*Description).GetVertexInstanceUVs();
+		FVector2f Extent = FVector2f::ZeroVector;
+		for (const FVertexInstanceID Instance : Description->VertexInstances().GetElementIDs())
+		{
+			const FVector2f UV = UVs.Get(Instance, 0);
+			Extent.X = FMath::Max(Extent.X, FMath::Abs(UV.X));
+			Extent.Y = FMath::Max(Extent.Y, FMath::Abs(UV.Y));
+		}
+		return Extent;
+	}
+
+	UTexture* TextureParameter(const UMaterialInterface* Material, const TCHAR* Name)
+	{
+		UTexture* Texture = nullptr;
+		Material->GetTextureParameterValue(FHashedMaterialParameterInfo(Name), Texture);
+		return Texture;
+	}
+
+	FImage SolidImage(int32 Width, int32 Height, FColor Color)
+	{
+		FImage Image(Width, Height, ERawImageFormat::BGRA8, EGammaSpace::sRGB);
+		for (FColor& Pixel : Image.AsBGRA8())
+		{
+			Pixel = Color;
+		}
+		return Image;
+	}
+
+	void SaveImage(const FString& File, const FImage& Image)
+	{
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(File), true);
+		FImageUtils::SaveImageByExtension(*File, Image);
 	}
 }
 
@@ -292,7 +349,10 @@ bool FQuakeSettingsTest::RunTest(const FString& Parameters)
 	ULibQuakeSettings* Settings = GetMutableDefault<ULibQuakeSettings>();
 	const float Scale = Settings->DefaultScale;
 	Settings->DefaultScale = 2.0f;
-	UQuakeMap* Map = ImportTestMap(TEXT("settings_map"), TEXT("trigger.map"));
+	bool bCanceled = false;
+	UQuakeMap* Map = Cast<UQuakeMap>(NewObject<UQuakeMapFactory>()->FactoryCreateFile(UQuakeMap::StaticClass(),
+		CreatePackage(TEXT("/Game/LibQuakeTests/settings_map")), TEXT("settings_map"), RF_Public | RF_Standalone,
+		TestFile(TEXT("trigger.map")), nullptr, GWarn, bCanceled));
 	Settings->DefaultScale = Scale;
 	if (!TestNotNull(TEXT("map imports"), Map))
 	{
@@ -649,5 +709,114 @@ bool FQuakeBspImportTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestTrue(TEXT("materials have the bsp textures"), Textured > 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeTextureFoldersTest, "LibQuake.Editor.TextureFolders",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeTextureFoldersTest::RunTest(const FString& Parameters)
+{
+	// textures and a material that are assets already, a texture of the same name in a sub folder
+	const FString Textures = TEXT("/Game/LibQuakeTests/FolderTextures");
+	UTexture2D* FolderTexture =
+		LibQuakeEditor::WriteTexture(Textures, TEXT("folder_tex"), SolidImage(32, 16, FColor::Red));
+	UTexture2D* FolderEmission =
+		LibQuakeEditor::WriteTexture(Textures, TEXT("folder_tex_emission"), SolidImage(32, 16, FColor::Black));
+	UTexture2D* SubTexture =
+		LibQuakeEditor::WriteTexture(Textures / TEXT("base"), TEXT("sub_tex"), SolidImage(16, 32, FColor::Green));
+	LibQuakeEditor::WriteTexture(Textures, TEXT("sub_tex"), SolidImage(64, 64, FColor::Blue));
+
+	const FString Materials = TEXT("/Game/LibQuakeTests/FolderMaterials");
+	UTexture2D* MaterialTexture =
+		LibQuakeEditor::WriteTexture(Materials, TEXT("T_mat"), SolidImage(128, 64, FColor::White));
+	bool bCreated = false;
+	UMaterialInstanceConstant* Material = LibQuakeEditor::FindOrCreateAsset<UMaterialInstanceConstant>(
+		LibQuakeEditor::FindOrCreatePackage(Materials / TEXT("mat_tex")), TEXT("mat_tex"), bCreated);
+	Material->PreEditChange(nullptr);
+	Material->SetParentEditorOnly(GetDefault<ULibQuakeSettings>()->SurfaceMaterial.LoadSynchronous());
+	Material->SetTextureParameterValueEditorOnly(FMaterialParameterInfo(TEXT("Albedo")), MaterialTexture);
+	Material->PostEditChange();
+	if (bCreated)
+	{
+		FAssetRegistryModule::AssetCreated(Material);
+	}
+
+	// image files where TrenchBroom looks for them, textures/ next to the folder of the map
+	const FString Game = FPaths::ConvertRelativePathToFull(FPaths::AutomationTransientDir() / TEXT("folders_game"));
+	IFileManager::Get().DeleteDirectory(*Game, false, true);
+	const FString MapFile = Game / TEXT("maps/folders.map");
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(MapFile), true);
+	IFileManager::Get().Copy(*MapFile, *TestFile(TEXT("folders.map")));
+	const FString ImageFile = Game / TEXT("textures/disk/file_tex.png");
+	SaveImage(ImageFile, SolidImage(8, 32, FColor::Yellow));
+	SaveImage(Game / TEXT("textures/disk/file_tex_luma.png"), SolidImage(8, 32, FColor::Black));
+
+	// the material folder of the project, the texture folder of the map
+	ULibQuakeSettings* Settings = GetMutableDefault<ULibQuakeSettings>();
+	const FDirectoryPath MaterialFolder = Settings->MaterialFolder;
+	const FDirectoryPath FilesFolder = Settings->TextureFilesFolder;
+	Settings->MaterialFolder.Path = Materials;
+	Settings->TextureFilesFolder.Path = TEXT("/Game/LibQuakeTests/QuakeTextures");
+	ON_SCOPE_EXIT
+	{
+		Settings->MaterialFolder = MaterialFolder;
+		Settings->TextureFilesFolder = FilesFolder;
+	};
+
+	UQuakeMap* Map = NewObject<UQuakeMap>(CreatePackage(TEXT("/Game/LibQuakeTests/folders")), TEXT("folders"),
+		RF_Public | RF_Standalone);
+	Map->Settings.TextureFolder.Path = Textures;
+	if (!TestTrue(TEXT("map imports"), UQuakeMapFactory::ImportMap(Map, MapFile)))
+	{
+		return false;
+	}
+
+	TMap<FString, const UStaticMesh*> Meshes;
+	for (const UStaticMesh* Mesh : Map->Meshes)
+	{
+		Meshes.Add(Mesh->GetStaticMaterials()[0].MaterialSlotName.ToString(), Mesh);
+	}
+	const UStaticMesh* Folder = Meshes.FindRef(TEXT("folder_tex"));
+	const UStaticMesh* Sub = Meshes.FindRef(TEXT("base/sub_tex"));
+	const UStaticMesh* Named = Meshes.FindRef(TEXT("mat_tex"));
+	const UStaticMesh* File = Meshes.FindRef(TEXT("disk/file_tex"));
+	if (!TestTrue(TEXT("a mesh per texture"), Folder && Sub && Named && File))
+	{
+		return false;
+	}
+
+	const UMaterialInterface* FolderMaterial = Folder->GetStaticMaterials()[0].MaterialInterface;
+	TestEqual(TEXT("a texture of the texture folder"), TextureParameter(FolderMaterial, TEXT("Albedo")),
+		(UTexture*)FolderTexture);
+	TestEqual(TEXT("with its emission"), TextureParameter(FolderMaterial, TEXT("Emissive")), (UTexture*)FolderEmission);
+	TestTrue(TEXT("uvs follow the texture's size"), UVExtent(Folder).Equals(FVector2f(2, 4)));
+
+	TestEqual(TEXT("a path is a sub folder"),
+		TextureParameter(Sub->GetStaticMaterials()[0].MaterialInterface, TEXT("Albedo")), (UTexture*)SubTexture);
+	TestTrue(TEXT("uvs of the sub folder's texture"), UVExtent(Sub).Equals(FVector2f(4, 2)));
+
+	TestTrue(TEXT("a material of the material folder is used as it is"),
+		Named->GetStaticMaterials()[0].MaterialInterface == Material);
+	TestTrue(TEXT("uvs follow the material's texture"), UVExtent(Named).Equals(FVector2f(0.5f, 1)));
+
+	UTexture2D* FileTexture = FindObject<UTexture2D>(
+		FindPackage(nullptr, TEXT("/Game/LibQuakeTests/QuakeTextures/disk/file_tex")), TEXT("file_tex"));
+	if (!TestNotNull(TEXT("an image file becomes a texture in the shared folder"), FileTexture))
+	{
+		return false;
+	}
+	const UMaterialInterface* FileMaterial = File->GetStaticMaterials()[0].MaterialInterface;
+	TestEqual(TEXT("the map uses it"), TextureParameter(FileMaterial, TEXT("Albedo")), (UTexture*)FileTexture);
+	TestNotNull(TEXT("_luma is its emission"), TextureParameter(FileMaterial, TEXT("Emissive")));
+	TestEqual(TEXT("point filtered like the wads"), FileTexture->Filter.GetValue(), TF_Nearest);
+	TestEqual(TEXT("the file is its source"), FileTexture->AssetImportData->GetFirstFilename(), ImageFile);
+	TestTrue(TEXT("uvs of the image file"), UVExtent(File).Equals(FVector2f(8, 2)));
+
+	// a changed file is written again by the next import
+	SaveImage(ImageFile, SolidImage(16, 32, FColor::Yellow));
+	TestTrue(TEXT("reimport"), UQuakeMapFactory::ImportMap(Map, MapFile));
+	TestEqual(TEXT("the texture follows the file"), FileTexture->Source.GetSizeX(), (int64)16);
+	TestTrue(TEXT("and so do the uvs, the reimport keeps the mesh"), UVExtent(File).Equals(FVector2f(4, 2)));
 	return true;
 }

@@ -101,9 +101,27 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Materials")
 	TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials;
 
+	/** Materials named like the textures, used as they are. A map's own MaterialFolder comes first. */
+	UPROPERTY(Config, EditAnywhere, Category = "Materials", meta = (ContentDir))
+	FDirectoryPath MaterialFolder;
+
 	/**
-	 * For faces whose texture is in none of the imported wads, their uvs follow its size. Without one they are
-	 * plain white. Used when a map is imported.
+	 * Textures named like the ones of the maps, used before the wads. A map's own TextureFolder comes first.
+	 * "<name>_emission" next to a texture adds its fullbright pixels, "<name>_front" the cloud layer of a sky.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Textures", meta = (ContentDir))
+	FDirectoryPath TextureFolder;
+
+	/**
+	 * Where textures from image files go, the ones TrenchBroom finds in a "textures" folder next to the maps. Shared
+	 * by all maps, "base/wall1" becomes <folder>/base/wall1. Empty turns image files off.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Textures", meta = (ContentDir))
+	FDirectoryPath TextureFilesFolder;
+
+	/**
+	 * For faces whose texture is in no texture folder, image file or wad, their uvs follow its size. Without one
+	 * they are plain white. Used when a map is imported.
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Textures")
 	TSoftObjectPtr<UTexture2D> MissingTexture;

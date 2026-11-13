@@ -31,6 +31,7 @@ reimport keeps them.
 | `SkyMaterial` | `M_QuakeSky` | parent for sky textures, texture parameters `SkyBack` and `SkyFront` |
 | `LiquidMaterial` | `M_QuakeLiquidTranslucent` | parent for liquid textures (`*`), texture parameter `Albedo`, scalars `Opacity` and `Brightness`. `M_QuakeLiquid` is opaque |
 | `Materials` | empty | materials used as they are, by texture name or prefix, see [Maps](../guide/maps.md#materials) |
+| `MaterialFolder` | empty | materials named like the textures, used as they are, after the map's, see [Maps](../guide/maps.md#textures-and-materials) |
 
 ## Liquids
 
@@ -49,4 +50,6 @@ How much a liquid covers what is behind it, 1 is opaque. A map overrides them wi
 
 | Setting | Default | |
 |---|---|---|
-| `MissingTexture` | `T_QuakeMissing` | for faces whose texture is in no imported wad, empty leaves them white |
+| `TextureFolder` | empty | texture assets named like the textures, after the map's, see [Maps](../guide/maps.md#textures-and-materials) |
+| `TextureFilesFolder` | `/Game/QuakeTextures` | where the textures from image files go, shared by all maps, empty turns image files off, see [Getting started](../guide/getting-started.md#image-files) |
+| `MissingTexture` | `T_QuakeMissing` | for faces whose texture is found nowhere, empty leaves them white |

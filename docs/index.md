@@ -5,7 +5,8 @@ collision from its brushes, lights and one actor per entity, dragged into a leve
 built on
 [libquake](https://github.com/libquake/libquake), which does the parsing, CSG and uvs.
 
-Edit the map in [TrenchBroom](https://trenchbroom.github.io), save, and Unreal reimports it.
+Edit the map in [TrenchBroom](https://trenchbroom.github.io), save, and Unreal reimports it. Textures come from
+the images in TrenchBroom's `textures` folder or from wads.
 
 | | |
 |---|---|
@@ -27,6 +28,7 @@ The project needs C++, Unreal compiles the plugin and libquake with it.
 
 | File | Becomes |
 |---|---|
+| `textures/*.png`, `.tga`, `.jpg` | a texture each in `/Game/QuakeTextures`, read when a map uses them |
 | `.wad` | `Quake Wad` asset and a texture per texture and layer |
 | `.map` | `Quake Map` asset, a static mesh per brush entity and a material instance per texture |
 | `.bsp` | the same, with the textures from the bsp |

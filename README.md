@@ -22,7 +22,8 @@ The project needs C++ (Unreal compiles the plugin, libquake included, when the p
 
 ## Use
 
-1. Drag a `.wad` into the Content Browser.
+1. Keep the textures as images in `textures/` next to the `maps` folder, as TrenchBroom does, or drag a `.wad`
+   into the Content Browser.
 2. Drag a `.map` into the Content Browser.
 3. Drag the map into the viewport.
 

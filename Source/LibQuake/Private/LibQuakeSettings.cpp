@@ -19,6 +19,7 @@ ULibQuakeSettings::ULibQuakeSettings()
 	LiquidMaterial = TSoftObjectPtr<UMaterialInterface>(
 		FSoftObjectPath(TEXT("/LibQuake/Materials/M_QuakeLiquidTranslucent.M_QuakeLiquidTranslucent")));
 
+	TextureFilesFolder.Path = TEXT("/Game/QuakeTextures");
 	MissingTexture = TSoftObjectPtr<UTexture2D>(
 		FSoftObjectPath(TEXT("/LibQuake/Textures/T_QuakeMissing.T_QuakeMissing")));
 }

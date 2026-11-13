@@ -2,6 +2,7 @@
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Texture2D.h"
+#include "ImageCore.h"
 #include "LibQuakeEditorModule.h"
 #include "Logging/MessageLog.h"
 #include "Misc/PackageName.h"
@@ -26,9 +27,9 @@ namespace LibQuakeEditor
 		return CreatePackage(*PackageName);
 	}
 
-	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
-		const TArray<uint8>& Rgba)
+	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, const FImage& Image)
 	{
+		check(Image.Format == ERawImageFormat::BGRA8);
 		UPackage* Package = FindOrCreatePackage(Folder / Name);
 		bool bCreated = false;
 		UTexture2D* Texture = FindOrCreateAsset<UTexture2D>(Package, Name, bCreated);
@@ -37,12 +38,7 @@ namespace LibQuakeEditor
 			Texture->PreEditChange(nullptr);
 		}
 
-		TArray<uint8> Bgra = Rgba;
-		for (int32 i = 0; i + 3 < Bgra.Num(); i += 4)
-		{
-			Swap(Bgra[i], Bgra[i + 2]);
-		}
-		Texture->Source.Init(Width, Height, 1, 1, TSF_BGRA8, Bgra.GetData());
+		Texture->Source.Init(Image.SizeX, Image.SizeY, 1, 1, TSF_BGRA8, Image.RawData.GetData());
 		Texture->SRGB = true;
 		Texture->Filter = TF_Nearest;
 		Texture->CompressionNone = true;
@@ -56,11 +52,28 @@ namespace LibQuakeEditor
 		return Texture;
 	}
 
-	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used)
+	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
+		const TArray<uint8>& Rgba)
+	{
+		FImage Image(Width, Height, ERawImageFormat::BGRA8, EGammaSpace::sRGB);
+		FMemory::Memcpy(Image.RawData.GetData(), Rgba.GetData(), FMath::Min<int64>(Rgba.Num(), Image.RawData.Num()));
+		for (int64 i = 0; i + 3 < Image.RawData.Num(); i += 4)
+		{
+			Swap(Image.RawData[i], Image.RawData[i + 2]);
+		}
+		return WriteTexture(Folder, Name, Image);
+	}
+
+	FString AssetName(const FString& QuakeName)
 	{
 		// the name is used for the package too, which forbids more characters than objects do ('*' for liquids)
-		const FString Base = ObjectTools::SanitizeInvalidChars(ObjectTools::SanitizeObjectName(QuakeName),
+		return ObjectTools::SanitizeInvalidChars(ObjectTools::SanitizeObjectName(QuakeName),
 			INVALID_LONGPACKAGE_CHARACTERS);
+	}
+
+	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used)
+	{
+		const FString Base = AssetName(QuakeName);
 
 		// collisions get a number in the order of the source, which is stable, so reimports keep their names
 		FString Name = Base;
