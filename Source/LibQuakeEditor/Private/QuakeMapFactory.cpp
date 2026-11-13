@@ -329,6 +329,18 @@ namespace
 
 		quakelib::MapBuildOptions Options;
 		Options.csg = Import.Map->Settings.bCSG;
+		switch (Import.Map->Settings.Pivot)
+		{
+		case EQuakePivot::MapOrigin:
+			Options.pivot = quakelib::PivotMode::MapOrigin;
+			break;
+		case EQuakePivot::Center:
+			Options.pivot = quakelib::PivotMode::Center;
+			break;
+		case EQuakePivot::BottomCenter:
+			Options.pivot = quakelib::PivotMode::BottomCenter;
+			break;
+		}
 		Options.textureSize = [&Import](const std::string& Name) -> std::pair<int, int>
 		{
 			// a missing texture gets a size anyway, without one its faces have no uvs and no tangents

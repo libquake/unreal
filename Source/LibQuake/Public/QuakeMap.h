@@ -9,6 +9,18 @@ class UAssetImportData;
 class UQuakeEntityClasses;
 class UStaticMesh;
 
+/** Where the mesh of a brush entity has its origin, and so its actor. */
+UENUM(BlueprintType)
+enum class EQuakePivot : uint8
+{
+	/** The origin of the map, the mesh stays where it is in the map. */
+	MapOrigin,
+	/** The center of the entity's bounds. */
+	Center,
+	/** The center of the bottom of the entity's bounds, a prop dragged into a level stands on the floor. */
+	BottomCenter,
+};
+
 USTRUCT(BlueprintType)
 struct LIBQUAKE_API FQuakeMapSettings
 {
@@ -21,6 +33,13 @@ struct LIBQUAKE_API FQuakeMapSettings
 	/** Remove faces hidden inside other brushes of the same entity. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Import")
 	bool bCSG = true;
+
+	/**
+	 * Origin of the brush entities' meshes. An "origin" brush in an entity wins, then its key "_pivot" ("origin",
+	 * "center" or "bottom"). The worldspawn stays at the map origin.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Import")
+	EQuakePivot Pivot = EQuakePivot::BottomCenter;
 
 	/** Quake units per lightmap texel. 16 matches Quake, smaller values give sharper shadows. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))

@@ -298,6 +298,15 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("trigger reports overlaps"), Shape->GetGenerateOverlapEvents());
 	TestTrue(TEXT("the wall stays visible"), Wall->FindComponentByClass<UStaticMeshComponent>()->IsVisible());
 
+	// brush entities have their origin at the bottom center by default, the actor stands there
+	const FBox Bounds = Shape->GetStaticMesh()->GetBoundingBox();
+	TestEqual(TEXT("mesh starts at the actor's height"), Bounds.Min.Z, 0.0, 0.01);
+	TestTrue(*FString::Printf(TEXT("mesh is centered on the actor, not %s"), *Bounds.GetCenter().ToString()),
+		FVector2D(Bounds.GetCenter()).Equals(FVector2D::ZeroVector, 0.01));
+	// the wall spans x 96..112 in Quake units, its bottom center is at 104 0 0
+	TestEqual(TEXT("the wall stands at its bottom center"), Wall->GetActorLocation(),
+		FVector(104 * Map->Settings.Scale, 0, 0));
+
 	UQuakeTriggerProbe* WallProbe = NewObject<UQuakeTriggerProbe>();
 	UQuakeTriggerProbe* NullProbe = NewObject<UQuakeTriggerProbe>();
 	Wall->FindComponentByClass<UQuakeEntityComponent>()->OnTriggered.AddDynamic(WallProbe,

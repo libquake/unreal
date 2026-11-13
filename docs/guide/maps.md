@@ -16,6 +16,13 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 Brush entities without visible faces, like triggers, get a mesh made of their brush hulls. It is never drawn, it
 is there for collision and overlaps.
 
+## Pivots
+
+Every brush entity except the worldspawn has its mesh and its actor at its own pivot, by default the center of
+the bottom of its bounds (`Pivot` in the [map settings](../reference/map-settings.md)). An `origin` brush in the
+entity wins, as in the Quake tools: its center is the pivot, the brush itself is neither drawn nor solid. The key
+`_pivot` on an entity (`origin`, `center` or `bottom`) overrides the map's setting for that entity.
+
 ## Collision
 
 Every brush is convex, the plugin uses the brush hulls as the simple collision of the static mesh, one convex
