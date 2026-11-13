@@ -38,14 +38,36 @@ public:
 	FQuakeEntityTriggered OnTriggered;
 
 	UFUNCTION(BlueprintPure, Category = "Quake")
+	bool HasKey(const FString& Key) const;
+
+	/** The value as written, empty if the entity has no such key. */
+	UFUNCTION(BlueprintPure, Category = "Quake")
 	FString GetKey(const FString& Key) const;
 
 	UFUNCTION(BlueprintPure, Category = "Quake")
 	float GetFloat(const FString& Key, float Fallback = 0) const;
 
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	int32 GetInt(const FString& Key, int32 Fallback = 0) const;
+
+	/** "1" or "true" is true, "0" or "false" false, case does not matter. Fallback otherwise. */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	bool GetBool(const FString& Key, bool Fallback = false) const;
+
+	/** Whether a bit of "spawnflags" is set, e.g. 1 for a door's START_OPEN. */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	bool HasSpawnFlag(int32 Flag) const;
+
 	/** "x y z" as written, in Quake units and axes, missing values are 0. */
 	UFUNCTION(BlueprintPure, Category = "Quake")
 	FVector GetVector(const FString& Key) const;
+
+	/**
+	 * "x y z" as a position in Unreal units and axes, scaled like the map. Positions in the map, like "origin", are
+	 * relative to the map actor, the actor's own place is GetActorLocation.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	FVector GetPosition(const FString& Key) const;
 
 	/** "angles" (pitch yaw roll) or the yaw "angle" as an Unreal rotation. */
 	UFUNCTION(BlueprintPure, Category = "Quake")

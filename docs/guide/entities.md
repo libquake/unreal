@@ -38,8 +38,9 @@ flicker for the `style` key.
 
 ## Keys
 
-`UQuakeEntityComponent` keeps the keys as text, as they are in the map. `GetKey` and `GetFloat` read them, from
-C++ and from Blueprints. Positions and directions in keys are in Quake units and axes.
+`UQuakeEntityComponent` keeps the keys as text, as they are in the map, custom keys included. From C++ and from
+Blueprints, `HasKey`, `GetKey`, `GetFloat`, `GetInt`, `GetBool` and `HasSpawnFlag` read them. `GetVector` gives
+"x y z" as written, in Quake units and axes, `GetPosition` the same in Unreal units and axes, scaled like the map.
 
 Point entities are turned by `angles` (pitch yaw roll) or the yaw `angle`. Brush entities are not: their brushes
 are already where they belong, `angle` is the direction they move in, like in Quake. `GetMoveDirection` gives it

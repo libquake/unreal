@@ -137,3 +137,28 @@ bool FQuakeAnglesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("angles turn all three"), Entity->GetRotation(), FRotator(-10, -20, -30));
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeKeysTest, "LibQuake.Conversion.Keys",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeKeysTest::RunTest(const FString& Parameters)
+{
+	UQuakeEntityComponent* Entity = NewObject<UQuakeEntityComponent>();
+	Entity->Scale = 2.0f;
+	Entity->Keys.Add(TEXT("spawnflags"), TEXT("5"));
+	Entity->Keys.Add(TEXT("count"), TEXT("3"));
+	Entity->Keys.Add(TEXT("locked"), TEXT("True"));
+	Entity->Keys.Add(TEXT("offset"), TEXT("10 20 30"));
+
+	TestTrue(TEXT("has a key"), Entity->HasKey(TEXT("count")));
+	TestFalse(TEXT("not another"), Entity->HasKey(TEXT("wait")));
+	TestEqual(TEXT("int"), Entity->GetInt(TEXT("count")), 3);
+	TestEqual(TEXT("int fallback"), Entity->GetInt(TEXT("wait"), 7), 7);
+	TestTrue(TEXT("bool from true"), Entity->GetBool(TEXT("locked")));
+	TestTrue(TEXT("bool fallback"), Entity->GetBool(TEXT("wait"), true));
+	TestTrue(TEXT("spawnflag 1"), Entity->HasSpawnFlag(1));
+	TestFalse(TEXT("spawnflag 2"), Entity->HasSpawnFlag(2));
+	TestTrue(TEXT("spawnflag 4"), Entity->HasSpawnFlag(4));
+	TestEqual(TEXT("position in unreal units and axes"), Entity->GetPosition(TEXT("offset")), FVector(20, -40, 60));
+	return true;
+}

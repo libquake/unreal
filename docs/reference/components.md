@@ -12,9 +12,14 @@ On every actor placed for an entity.
 | `FString ClassName` | the entity's class name |
 | `TMap<FString, FString> Keys` | all keys as in the map, `classname` included |
 | `FQuakeEntityTriggered OnTriggered` | called with the activator when another entity targets this one |
+| `bool HasKey(Key)` | whether the entity has the key |
 | `FString GetKey(Key)` | the value, empty if the entity has no such key |
 | `float GetFloat(Key, Fallback)` | the value as a number |
+| `int32 GetInt(Key, Fallback)` | the value as an integer |
+| `bool GetBool(Key, Fallback)` | `1`/`true` and `0`/`false`, case does not matter |
+| `bool HasSpawnFlag(Flag)` | whether a bit of `spawnflags` is set |
 | `FVector GetVector(Key)` | "x y z" as written, in Quake units and axes |
+| `FVector GetPosition(Key)` | "x y z" in Unreal units and axes, scaled like the map |
 | `FLinearColor GetColor(Key, Fallback)` | "r g b" as 0..1 or 0..255 |
 | `FRotator GetRotation()` | `angles` (pitch yaw roll) or `angle` as an Unreal rotation |
 | `FVector GetMoveDirection()` | the direction a brush entity moves in: `angle`, `-1` up, `-2` down, or `angles` |

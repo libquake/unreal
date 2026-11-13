@@ -4,6 +4,11 @@
 #include "GameFramework/Pawn.h"
 #include "QuakeConversion.h"
 
+bool UQuakeEntityComponent::HasKey(const FString& Key) const
+{
+	return Keys.Contains(Key);
+}
+
 FString UQuakeEntityComponent::GetKey(const FString& Key) const
 {
 	return Keys.FindRef(Key);
@@ -13,6 +18,31 @@ float UQuakeEntityComponent::GetFloat(const FString& Key, float Fallback) const
 {
 	const FString* Value = Keys.Find(Key);
 	return Value ? FCString::Atof(**Value) : Fallback;
+}
+
+int32 UQuakeEntityComponent::GetInt(const FString& Key, int32 Fallback) const
+{
+	const FString* Value = Keys.Find(Key);
+	return Value ? FCString::Atoi(**Value) : Fallback;
+}
+
+bool UQuakeEntityComponent::GetBool(const FString& Key, bool Fallback) const
+{
+	const FString Value = GetKey(Key).TrimStartAndEnd();
+	if (Value == TEXT("1") || Value.Equals(TEXT("true"), ESearchCase::IgnoreCase))
+	{
+		return true;
+	}
+	if (Value == TEXT("0") || Value.Equals(TEXT("false"), ESearchCase::IgnoreCase))
+	{
+		return false;
+	}
+	return Fallback;
+}
+
+bool UQuakeEntityComponent::HasSpawnFlag(int32 Flag) const
+{
+	return (GetInt(TEXT("spawnflags")) & Flag) != 0;
 }
 
 FVector UQuakeEntityComponent::GetVector(const FString& Key) const
@@ -28,6 +58,11 @@ FVector UQuakeEntityComponent::GetVector(const FString& Key) const
 		}
 	}
 	return Result;
+}
+
+FVector UQuakeEntityComponent::GetPosition(const FString& Key) const
+{
+	return LibQuake::ToUnrealPosition(FVector3f(GetVector(Key)), Scale);
 }
 
 FRotator UQuakeEntityComponent::GetRotation() const
