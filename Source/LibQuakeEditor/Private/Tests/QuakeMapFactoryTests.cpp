@@ -1,4 +1,5 @@
 #include "ActorFactoryQuakeMap.h"
+#include "Components/CapsuleComponent.h"
 #include "Editor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
@@ -6,6 +7,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerStart.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
@@ -151,6 +153,14 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("light"); });
 	const AActor* LightActor = *Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<APointLight>(); });
 	TestEqual(TEXT("light sits at its origin"), LightActor->GetActorLocation(), Light->Transform.GetLocation());
+
+	const FQuakeMapEntity* Start = Map->Entities.FindByPredicate(
+		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("info_player_start"); });
+	const APlayerStart* StartActor = Cast<APlayerStart>(
+		*Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<APlayerStart>(); }));
+	const double Feet = StartActor->GetActorLocation().Z - StartActor->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	TestEqual(TEXT("player start stands where the Quake player's feet are"), Feet,
+		Start->Transform.GetLocation().Z - 24.0 * Map->Settings.Scale, 0.01);
 
 	for (AActor* Actor : Actors)
 	{

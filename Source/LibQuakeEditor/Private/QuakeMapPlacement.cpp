@@ -1,5 +1,6 @@
 #include "QuakeMapPlacement.h"
 
+#include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
@@ -174,6 +175,16 @@ namespace
 		return Sun;
 	}
 
+	/** Quake's origin is 24 units above the feet, the start is moved so its capsule stands on the same floor. */
+	APlayerStart* SpawnPlayerStart(ULevel* Level, const FString& Label, FTransform Transform, float Scale)
+	{
+		APlayerStart* Start = Spawn<APlayerStart>(Level, Label, Transform);
+		const float HalfHeight = Start->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		Transform.AddToTranslation(FVector(0, 0, HalfHeight - 24.0f * Scale));
+		Start->SetActorTransform(Transform);
+		return Start;
+	}
+
 	/** Fixed exposure for the whole level, the brightness of the lights is calibrated to it. */
 	APostProcessVolume* SpawnExposure(ULevel* Level)
 	{
@@ -227,7 +238,7 @@ namespace LibQuakeEditor
 			}
 			else if (Entity.ClassName == TEXT("info_player_start"))
 			{
-				Actor = Spawn<APlayerStart>(Level, Label, Entity.Transform);
+				Actor = SpawnPlayerStart(Level, Label, Entity.Transform, Map->Settings.Scale);
 			}
 			else
 			{

@@ -8,7 +8,7 @@ and all its keys.
 | mapped in the map's `EntityClasses` | that class, brush entities get their mesh as an extra component |
 | `worldspawn` and other brush entities | static mesh actor |
 | `light*` | static point light |
-| `info_player_start` | player start |
+| `info_player_start` | player start, raised so its capsule stands on the floor the Quake player stands on |
 | `worldspawn` with `_sunlight` | an additional directional light, see [Lighting](lighting.md) |
 | other point entities | an empty actor at the entity's origin |
 
