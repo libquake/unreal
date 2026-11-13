@@ -26,7 +26,10 @@ Tools > LibQuake > **Add Quake Exposure** puts such a volume into the current le
 `QuakeExposure`, with a look that suits Quake maps: bloom intensity 2 for glowing lava and fullbrights, film slope
 0.7 and toe 0.5. It belongs to the level, not to a map: change or delete it like any other volume.
 
-Before a lighting build the editor shows static lights as a preview without shadows.
+Before a lighting build the editor shows static lights as a preview, their shadows stamped with "Preview".
+
+On Macs with Apple Silicon the lighting build fails. Unreal 5.8 ships Lightmass for Intel only, and under Rosetta
+its ray tracer refuses the CPU. Build the lighting on Windows, or use Movable lights on the Mac.
 
 ## Lightmap uvs
 
