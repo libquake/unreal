@@ -8,7 +8,7 @@
 | `float Scale` | 3.125 | Unreal units (cm) per Quake unit |
 | `bool bCSG` | on | remove faces hidden inside other brushes of the same entity |
 | `bool bMeshLibrary` | off | the map is a collection of meshes and is not placed, see [Maps](../guide/maps.md#mesh-libraries) |
-| `EQuakePivot Pivot` | BottomCenter | origin of the brush entities' meshes: `MapOrigin`, `Center` or `BottomCenter`, see [Maps](../guide/maps.md#pivots) |
+| `EQuakePivot Pivot` | BottomCenter | origin of the brush entities' meshes: `MapOrigin`, `Center`, `BottomCenter` or `BottomCorner`, see [Maps](../guide/maps.md#pivots) |
 | `float LuxelSize` | 16 | Quake units per lightmap texel, sets the lightmap resolution of the meshes |
 | `EComponentMobility LightMobility` | Static | mobility of the lights of placed maps, Movable for Lumen |
 | `TMap<FString, TSoftObjectPtr<UMaterialInterface>> Materials` | empty | materials by texture name or prefix, before the project's, see [Maps](../guide/maps.md#materials) |

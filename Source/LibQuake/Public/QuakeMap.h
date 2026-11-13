@@ -21,6 +21,8 @@ enum class EQuakePivot : uint8
 	Center,
 	/** The center of the bottom of the entity's bounds, a prop dragged into a level stands on the floor. */
 	BottomCenter,
+	/** The lowest corner of the entity's bounds, modular pieces snap to the grid with any size. */
+	BottomCorner,
 };
 
 /** Settings of one map. A new import starts with the defaults of the project settings (ULibQuakeSettings). */
@@ -39,7 +41,7 @@ struct LIBQUAKE_API FQuakeMapSettings
 
 	/**
 	 * Origin of the brush entities' meshes. An "origin" brush in an entity wins, then its key "_pivot" ("origin",
-	 * "center" or "bottom"). The worldspawn stays at the map origin.
+	 * "center", "bottom" or "corner"). The worldspawn stays at the map origin.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Import")
 	EQuakePivot Pivot = EQuakePivot::BottomCenter;

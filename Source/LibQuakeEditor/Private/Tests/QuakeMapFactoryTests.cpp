@@ -465,6 +465,19 @@ bool FQuakeMeshLibraryTest::RunTest(const FString& Parameters)
 		GetMutableDefault<UActorFactoryQuakeMap>()->CanCreateActorFrom(FAssetData(Map), Error));
 	TestFalse(TEXT("with a hint"), Error.IsEmpty());
 
+	// with the corner pivot the crate starts at its lowest corner, Quake's smallest y is Unreal's largest
+	Map->Settings.Pivot = EQuakePivot::BottomCorner;
+	TestTrue(TEXT("reimport"), UQuakeMapFactory::ImportMap(Map, TestFile(TEXT("meshlib.map"))));
+	const TObjectPtr<UStaticMesh>* Corner = Map->Meshes.FindByPredicate(
+		[](const UStaticMesh* Mesh) { return Mesh->GetName() == TEXT("SM_crate"); });
+	if (TestNotNull(TEXT("crate"), Corner))
+	{
+		const FBox Bounds = (*Corner)->GetBoundingBox();
+		TestTrue(*FString::Printf(TEXT("crate starts at its corner, not %s"), *Bounds.ToString()),
+			FMath::IsNearlyZero(Bounds.Min.X, 0.01) && FMath::IsNearlyZero(Bounds.Max.Y, 0.01) &&
+			FMath::IsNearlyZero(Bounds.Min.Z, 0.01));
+	}
+
 	Map->Entities[0].Keys.Remove(TEXT("_meshlib"));
 	TestFalse(TEXT("without the key it is a level"), Map->IsMeshLibrary());
 	Map->Settings.bMeshLibrary = true;

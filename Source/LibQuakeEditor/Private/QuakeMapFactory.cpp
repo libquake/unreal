@@ -49,6 +49,8 @@ namespace
 			return quakelib::PivotMode::Center;
 		case EQuakePivot::BottomCenter:
 			return quakelib::PivotMode::BottomCenter;
+		case EQuakePivot::BottomCorner:
+			return quakelib::PivotMode::BottomCorner;
 		default:
 			return quakelib::PivotMode::MapOrigin;
 		}

@@ -44,7 +44,11 @@ levels like any other static mesh. A reimport updates them in place, as long as 
 Every brush entity except the worldspawn has its mesh and its actor at its own pivot, by default the center of
 the bottom of its bounds (`Pivot` in the [map settings](../reference/map-settings.md)). An `origin` brush in the
 entity wins, as in the Quake tools: its center is the pivot, the brush itself is neither drawn nor solid. The key
-`_pivot` on an entity (`origin`, `center` or `bottom`) overrides the map's setting for that entity.
+`_pivot` on an entity (`origin`, `center`, `bottom` or `corner`) overrides the map's setting for that entity.
+
+`BottomCorner` (`corner`) puts the pivot at the lowest corner of the bounds. Modular pieces like wall segments
+then snap to the grid in Unreal whatever their size, with the bottom center that only works when half of their
+size is on the grid.
 
 ## Collision
 
