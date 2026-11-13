@@ -1,7 +1,9 @@
-// trigger test map: a floor, a trigger_once targeting a func_wall and an info_null, a light
+// trigger test map: a floor, a trigger_once targeting a func_wall and an info_null, a light and a sun
 {
 "classname" "worldspawn"
 "wad" "sky_alpha.wad"
+"_sunlight" "200"
+"_sun_mangle" "90 -45 0"
 {
 ( -144 0 0 ) ( -144 1 0 ) ( -144 0 1 ) 128_blue_3 0 0 0 1 1
 ( 144 0 0 ) ( 144 0 1 ) ( 144 1 0 ) 128_blue_3 0 0 0 1 1

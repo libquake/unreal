@@ -1,6 +1,8 @@
 #include "QuakeMapPlacement.h"
 
 #include "Components/PointLightComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
@@ -11,6 +13,7 @@
 #include "LevelInstance/LevelInstanceInterface.h"
 #include "LevelInstance/LevelInstanceSubsystem.h"
 #include "Misc/PackageName.h"
+#include "QuakeConversion.h"
 #include "QuakeEntityClasses.h"
 #include "QuakeEntityComponent.h"
 #include "QuakeMap.h"
@@ -18,6 +21,17 @@
 
 namespace
 {
+	/** "r g b" as 0..1 or 0..255. */
+	FLinearColor ParseColor(const FString* Value)
+	{
+		FVector3f Rgb = LibQuakeEditor::ParseVector(Value);
+		if (Rgb.GetMax() > 1.0f)
+		{
+			Rgb /= 255.0f;
+		}
+		return FLinearColor(Rgb.X, Rgb.Y, Rgb.Z);
+	}
+
 	/** Quake's "light" is brightness and radius at once, it falls off linearly like in Quake. */
 	void SetupLight(APointLight* Light, const FQuakeMapEntity& Entity, float Scale)
 	{
@@ -33,12 +47,7 @@ namespace
 
 		if (const FString* Color = Entity.Keys.Find(TEXT("_color")))
 		{
-			FVector3f Rgb = LibQuakeEditor::ParseVector(Color);
-			if (Rgb.GetMax() > 1.0f)
-			{
-				Rgb /= 255.0f;
-			}
-			Component->SetLightColor(FLinearColor(Rgb.X, Rgb.Y, Rgb.Z));
+			Component->SetLightColor(ParseColor(Color));
 		}
 	}
 
@@ -49,6 +58,8 @@ namespace
 		AActor* Actor = Level->GetWorld()->SpawnActor(Class, &Transform, Parameters);
 		if (Actor)
 		{
+			// spawning combines the transform with the one the class template comes with
+			Actor->SetActorTransform(Transform);
 			Actor->SetActorLabel(Label);
 		}
 		return Actor;
@@ -115,6 +126,43 @@ namespace
 		return Actor;
 	}
 
+	/**
+	 * The sun of the worldspawn ("_sunlight", "_sun_mangle" or "_sunlight_mangle" as yaw and pitch of the direction
+	 * the light travels, straight down without one), null if the map has none.
+	 */
+	ADirectionalLight* SpawnSun(ULevel* Level, const FQuakeMapEntity& Worldspawn)
+	{
+		const FString* Sunlight = Worldspawn.Keys.Find(TEXT("_sunlight"));
+		const float Value = Sunlight ? FCString::Atof(**Sunlight) : 0;
+		if (Value <= 0)
+		{
+			return nullptr;
+		}
+
+		const FString* Mangle = Worldspawn.Keys.Find(TEXT("_sun_mangle"));
+		Mangle = Mangle ? Mangle : Worldspawn.Keys.Find(TEXT("_sunlight_mangle"));
+		FVector Direction(0, 0, -1);
+		if (Mangle)
+		{
+			const FVector3f Angles = LibQuakeEditor::ParseVector(Mangle);
+			const float Yaw = FMath::DegreesToRadians(Angles.X);
+			const float Pitch = FMath::DegreesToRadians(Angles.Y);
+			Direction = LibQuake::ToUnrealPosition(
+				FVector3f(FMath::Cos(Yaw) * FMath::Cos(Pitch), FMath::Sin(Yaw) * FMath::Cos(Pitch), FMath::Sin(Pitch)),
+				1.0f);
+		}
+
+		ADirectionalLight* Sun = Spawn<ADirectionalLight>(Level, TEXT("sun"), FTransform(Direction.Rotation()));
+		UDirectionalLightComponent* Component = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
+		Component->SetMobility(EComponentMobility::Static);
+		Component->SetIntensity(Value / 100.0f);
+		if (const FString* Color = Worldspawn.Keys.Find(TEXT("_sunlight_color")))
+		{
+			Component->SetLightColor(ParseColor(Color));
+		}
+		return Sun;
+	}
+
 	FString LevelPackageName(const UQuakeMap* Map)
 	{
 		return FPackageName::GetLongPackagePath(Map->GetOutermost()->GetName()) / (Map->GetName() + TEXT("_Generated")) /
@@ -158,11 +206,19 @@ namespace LibQuakeEditor
 			else
 			{
 				// unknown point entities keep their place and keys, Blueprints can be mapped to them later
-				// an actor spawned without a root has no transform, it gets one before it is placed
+				// an actor spawned without a root has no transform, it gets one once the root is there
 				Actor = Spawn<AActor>(Level, Label, Entity.Transform);
 				Actor->SetRootComponent(AddComponent<USceneComponent>(Actor, TEXT("Root")));
 				Actor->GetRootComponent()->RegisterComponent();
 				Actor->SetActorTransform(Entity.Transform);
+			}
+
+			if (Entity.ClassName == TEXT("worldspawn"))
+			{
+				if (ADirectionalLight* Sun = SpawnSun(Level, Entity))
+				{
+					Actors.Add(Sun);
+				}
 			}
 
 			if (Actor)

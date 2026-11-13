@@ -1,5 +1,6 @@
 #include "ActorFactoryQuakeMap.h"
 #include "Editor.h"
+#include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
@@ -201,6 +202,15 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the info_null is triggered too"), NullProbe->Count, 1);
 	TestEqual(TEXT("info_null keeps its origin"), Null->GetActorLocation(),
 		FVector(-96 * Map->Settings.Scale, 0, 32 * Map->Settings.Scale));
+
+	// "90 -45 0": the sun shines towards Quake's +y at 45 degrees, which is Unreal's -y
+	const AActor* const* Sun = Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<ADirectionalLight>(); });
+	if (TestNotNull(TEXT("worldspawn sun"), Sun))
+	{
+		const FVector Direction = (*Sun)->GetActorForwardVector();
+		TestTrue(*FString::Printf(TEXT("sun points down and to -y, not %s"), *Direction.ToString()),
+			Direction.Equals(FVector(0, -1, -1).GetSafeNormal(), 0.01));
+	}
 
 	for (AActor* Actor : Actors)
 	{
