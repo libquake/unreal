@@ -5,10 +5,20 @@ Maps are lit by Unreal. The lights of the map become static Unreal lights, they 
 
 | Map | Unreal |
 |---|---|
-| `light` with `light`, `_color` | point light, linear falloff, attenuation radius = `light` in Quake units |
+| `light` with `light`, `_color` | point light, attenuation radius = `light` in Quake units, falloff exponent 2 |
 | `_sunlight`, `_sun_mangle`, `_sunlight_color` in the worldspawn | directional light, pointing where `_sun_mangle` says, straight down without it |
 
-The intensities are a first guess and may need adjusting in the scene.
+## Brightness
+
+Quake lights fade linearly from their value at the center to 0 at the radius, and a surface at light level 128
+shows its texture as it is. Unreal fades by (1 - d²/r²)^exponent, an exponent of 2 is close to linear. The
+intensity is `light / 128 * π * 1.2`, so a surface at level 128 shows its texture as it is in Unreal too, under the
+exposure the map brings along: the level gets an unbound post process volume `exposure` with manual exposure and
+a bias of 0. Without it Unreal's auto exposure brightens dark rooms and darkens lit ones, which flattens the
+light of a Quake map. To use the exposure of your own level, delete the volume or turn off `bManualExposure` in the
+[map settings](../reference/map-settings.md) before placing.
+
+Before a lighting build the editor shows static lights as a preview, brighter and without shadows.
 
 ## Lightmap uvs
 

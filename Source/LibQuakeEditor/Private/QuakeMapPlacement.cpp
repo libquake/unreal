@@ -4,6 +4,7 @@
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
@@ -32,7 +33,16 @@ namespace
 		return FLinearColor(Rgb.X, Rgb.Y, Rgb.Z);
 	}
 
-	/** Quake's "light" is brightness and radius at once, it falls off linearly like in Quake. */
+	/**
+	 * Unreal brightness of a Quake light level. Level 128 shows a texture as it is: a lit surface shows
+	 * albedo / pi * brightness, and the manual exposure of the map divides by 1.2.
+	 */
+	float ToUnrealBrightness(float Level)
+	{
+		return Level / 128.0f * UE_PI * 1.2f;
+	}
+
+	/** Quake's "light" is brightness and radius at once, the light fades linearly to 0 at the radius. */
 	void SetupLight(APointLight* Light, const FQuakeMapEntity& Entity, float Scale)
 	{
 		UPointLightComponent* Component = Light->PointLightComponent;
@@ -41,9 +51,10 @@ namespace
 		const FString* LightKey = Entity.Keys.Find(TEXT("light"));
 		const float Value = LightKey ? FCString::Atof(**LightKey) : 300.0f;
 		Component->bUseInverseSquaredFalloff = false;
-		Component->LightFalloffExponent = 1.0f;
+		// Unreal fades by (1 - d²/r²)^exponent, 2 comes closest to linear
+		Component->LightFalloffExponent = 2.0f;
 		Component->SetAttenuationRadius(Value * Scale);
-		Component->SetIntensity(Value / 300.0f * 5.0f);
+		Component->SetIntensity(ToUnrealBrightness(Value));
 
 		if (const FString* Color = Entity.Keys.Find(TEXT("_color")))
 		{
@@ -155,12 +166,27 @@ namespace
 		ADirectionalLight* Sun = Spawn<ADirectionalLight>(Level, TEXT("sun"), FTransform(Direction.Rotation()));
 		UDirectionalLightComponent* Component = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
 		Component->SetMobility(EComponentMobility::Static);
-		Component->SetIntensity(Value / 100.0f);
+		Component->SetIntensity(ToUnrealBrightness(Value));
 		if (const FString* Color = Worldspawn.Keys.Find(TEXT("_sunlight_color")))
 		{
 			Component->SetLightColor(ParseColor(Color));
 		}
 		return Sun;
+	}
+
+	/** Fixed exposure for the whole level, the brightness of the lights is calibrated to it. */
+	APostProcessVolume* SpawnExposure(ULevel* Level)
+	{
+		APostProcessVolume* Volume = Spawn<APostProcessVolume>(Level, TEXT("exposure"), FTransform::Identity);
+		Volume->bUnbound = true;
+		FPostProcessSettings& Settings = Volume->Settings;
+		Settings.bOverride_AutoExposureMethod = true;
+		Settings.AutoExposureMethod = AEM_Manual;
+		Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
+		Settings.AutoExposureApplyPhysicalCameraExposure = false;
+		Settings.bOverride_AutoExposureBias = true;
+		Settings.AutoExposureBias = 0.0f;
+		return Volume;
 	}
 
 	FString LevelPackageName(const UQuakeMap* Map)
@@ -218,6 +244,10 @@ namespace LibQuakeEditor
 				if (ADirectionalLight* Sun = SpawnSun(Level, Entity))
 				{
 					Actors.Add(Sun);
+				}
+				if (Map->Settings.bManualExposure)
+				{
+					Actors.Add(SpawnExposure(Level));
 				}
 			}
 

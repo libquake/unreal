@@ -27,6 +27,13 @@ struct LIBQUAKE_API FQuakeMapSettings
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting", meta = (ClampMin = "1"))
 	float LuxelSize = 16.0f;
 
+	/**
+	 * Put a post process volume with a fixed exposure into the level, the brightness of the lights is calibrated to
+	 * it. Without it, Unreal's auto exposure brightens dark rooms and darkens lit ones.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting")
+	bool bManualExposure = true;
+
 	/** Actor classes for entity classes, used when the map is placed. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Entities")
 	TObjectPtr<UQuakeEntityClasses> EntityClasses;

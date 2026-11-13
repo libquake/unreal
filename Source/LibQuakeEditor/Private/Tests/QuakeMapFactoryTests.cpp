@@ -2,6 +2,7 @@
 #include "Editor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
+#include "Engine/PostProcessVolume.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
@@ -122,16 +123,23 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 	const TArray<AActor*> Actors = LibQuakeEditor::SpawnMapActors(Map, World->GetCurrentLevel());
 	int32 Meshes = 0;
 	int32 Lights = 0;
+	int32 Exposures = 0;
 	for (const AActor* Actor : Actors)
 	{
 		Meshes += Actor->IsA<AStaticMeshActor>();
 		Lights += Actor->IsA<APointLight>();
+		Exposures += Actor->IsA<APostProcessVolume>();
 	}
 	TestEqual(TEXT("an actor per mesh"), Meshes, Map->Meshes.Num());
 	TestTrue(TEXT("lights are spawned"), Lights > 0);
-	TestEqual(TEXT("an actor per entity"), Actors.Num(), Map->Entities.Num());
+	TestEqual(TEXT("one exposure volume"), Exposures, 1);
+	TestEqual(TEXT("an actor per entity"), Actors.Num() - Exposures, Map->Entities.Num());
 	for (const AActor* Actor : Actors)
 	{
+		if (Actor->IsA<APostProcessVolume>())
+		{
+			continue;
+		}
 		const UQuakeEntityComponent* Entity = Actor->FindComponentByClass<UQuakeEntityComponent>();
 		if (TestNotNull(TEXT("every actor carries its keys"), Entity))
 		{
