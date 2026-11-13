@@ -1,37 +1,37 @@
-# Qnreal
+# LibQuake for Unreal
 
 ![LGBTQ+ Friendly][badge-lgbtq]
 ![Trans Rights][badge-trans]
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-### Quake (Trenchbroom) Map and WAD importer for Unreal Engine 5.
+Unreal Engine plugin that imports Quake 1 `.map` and `.wad` files. A map becomes static meshes with collision from
+its brushes, lights and entities, placed in levels as a Level Instance. Built on
+[libquake](https://github.com/libquake/libquake), which does the parsing, CSG and uvs.
 
-<img src="https://github.com/QFormatPlugins/Qnreal/blob/main/.media/logo.png?raw=true" alt="qunreal_logo" width="60%" height=60%/>
+Experimental. Unreal Engine 5.8, tested on macOS.
 
-## Installation:
+## Install
 
-* Create a folder named `Plugins` in your project if you don't already have one.
-* clone the repository into the `Plugins` folder via git:
+Clone the repository into the `Plugins` folder of your project and enable the plugin:
 
-```bash
-git clone https://github.com/QFormatPlugins/Qnreal
+```sh
+git clone https://github.com/libquake/unreal Plugins/LibQuake
 ```
-* Activate the QUnreal Plugin via editor or your project config file.
 
-## Documentation:
+The project needs C++ (Unreal compiles the plugin, libquake included, when the project opens).
 
-[Read the Wiki](https://github.com/QFormatPlugins/Qnreal/wiki)
+## Use
 
-## features:
+1. Drag a `.wad` into the Content Browser.
+2. Drag a `.map` into the Content Browser.
+3. Right click the map > Place in Level.
 
-* import Quake Maps and WADs by simply dragging them into your content drawer.
-* map Unreal Blueprints or C++ Classes to trenchbroom entities.
-* use map files as static mesh libraries.
+The documentation is in [docs/](docs/index.md).
 
-## TODO:
+## libquake
 
-* more options for setting the entity pivot
-* add "reload" button into the map asset context menu
+`Source/ThirdParty/libquake` is a copy of the libquake sources, `VERSION` names the commit.
+`Scripts/sync-libquake.sh` updates it from a checkout next to this repository or from a release tag.
 
 [badge-trans]: https://pride-badges.pony.workers.dev/static/v1?label=trans%20rights&stripeWidth=6&stripeColors=5BCEFA,F5A9B8,FFFFFF,F5A9B8,5BCEFA
 [badge-lgbtq]: https://pride-badges.pony.workers.dev/static/v1?label=lgbtq%2B%20friendly&stripeWidth=6&stripeColors=E40303,FF8C00,FFED00,008026,24408E,732982
