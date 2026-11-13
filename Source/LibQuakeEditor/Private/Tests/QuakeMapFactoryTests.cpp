@@ -1,5 +1,7 @@
 #include "ActorFactoryQuakeMap.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Editor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
@@ -154,6 +156,16 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 	const AActor* LightActor = *Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<APointLight>(); });
 	TestEqual(TEXT("light sits at its origin"), LightActor->GetActorLocation(), Light->Transform.GetLocation());
 
+	// "light" "300": the static light keeps the values even though Unreal's setters ignore static lights
+	const UPointLightComponent* LightComponent = Cast<APointLight>(LightActor)->PointLightComponent;
+	const double UnitsPerMeter = 100.0 / Map->Settings.Scale;
+	TestTrue(TEXT("inverse square falloff"), LightComponent->bUseInverseSquaredFalloff);
+	TestEqual(TEXT("in candela"), LightComponent->IntensityUnits, ELightUnits::Candelas);
+	TestEqual(TEXT("level 128 at sqrt(2 pi 300) units"), (double)LightComponent->Intensity,
+		300.0 * 2.0 * UE_DOUBLE_PI * UE_DOUBLE_PI * 1.2 / (UnitsPerMeter * UnitsPerMeter), 0.001);
+	TestEqual(TEXT("radius where the light fades out"), (double)LightComponent->AttenuationRadius,
+		(FMath::Sqrt(1.0 + 1024.0 * 300.0) - 1.0) * 0.5 * Map->Settings.Scale, 0.01);
+
 	const FQuakeMapEntity* Start = Map->Entities.FindByPredicate(
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("info_player_start"); });
 	const APlayerStart* StartActor = Cast<APlayerStart>(
@@ -228,6 +240,9 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 		const FVector Direction = (*Sun)->GetActorForwardVector();
 		TestTrue(*FString::Printf(TEXT("sun points down and to -y, not %s"), *Direction.ToString()),
 			Direction.Equals(FVector(0, -1, -1).GetSafeNormal(), 0.01));
+		// "_sunlight" "200" is level 100 after Quake's range scale of 0.5
+		TestEqual(TEXT("sun brightness"), (double)Cast<ADirectionalLight>(*Sun)->GetLightComponent()->Intensity,
+			100.0 / 128.0 * UE_DOUBLE_PI * 1.2, 0.001);
 	}
 
 	for (AActor* Actor : Actors)

@@ -5,16 +5,25 @@ Maps are lit by Unreal. The lights of the map become static Unreal lights, they 
 
 | Map | Unreal |
 |---|---|
-| `light` with `light`, `_color` | point light, attenuation radius = `light` in Quake units, falloff exponent 2 |
+| `light` with `light`, `_color` | point light with inverse square falloff |
 | `_sunlight`, `_sun_mangle`, `_sunlight_color` in the worldspawn | directional light, pointing where `_sun_mangle` says, straight down without it |
 
 ## Brightness
 
-Quake lights fade linearly from their value at the center to 0 at the radius, and a surface at light level 128
-shows its texture as it is. Unreal fades by (1 - d²/r²)^exponent, an exponent of 2 is close to linear. The
-intensity is `light / 128 * π * 1.2`, so a surface at level 128 shows its texture as it is in Unreal too, under the
-exposure the map brings along: the level gets an unbound post process volume `exposure` with manual exposure and
-a bias of 0. Without it Unreal's auto exposure brightens dark rooms and darkens lit ones, which flattens the
+In Quake a surface at light level 128 shows its texture as it is. The light tools halve every light (`_range`
+0.5), and a light fades linearly from its value to 0: `light 300` lights a surface to level 128 about 44 units
+away. The point lights fade by the inverse square like any Unreal light and reach level 128 at about the same
+distance, `sqrt(2π · light)` units:
+
+| | |
+|---|---|
+| intensity | `light · 2π² · 1.2 / m²` candela, `m` = Quake units per meter (32 at the default scale) |
+| attenuation radius | `(sqrt(1 + 1024 · light) - 1) / 2` Quake units, where the light adds less than 1/40 of the texture brightness |
+| sun | `_sunlight · 0.5 / 128 · π · 1.2` lux |
+
+Close to a light the surfaces get brighter than in Quake, further away darker. The factor 1.2 matches the exposure
+the map brings along: the level gets an unbound post process volume `exposure` with manual exposure and a bias of
+0. Without it Unreal's auto exposure brightens dark rooms and darkens lit ones, which flattens the
 light of a Quake map. To use the exposure of your own level, delete the volume or turn off `bManualExposure` in the
 [map settings](../reference/map-settings.md) before placing.
 
