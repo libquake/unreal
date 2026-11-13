@@ -11,6 +11,7 @@ public class LibQuakeEditor : ModuleRules
 		{
 			"AssetDefinition",
 			"AssetRegistry",
+			"AssetTools",
 			"ContentBrowser",
 			"LibQuake",
 			"LibQuakeCore",

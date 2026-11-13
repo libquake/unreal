@@ -1,8 +1,10 @@
 #include "ActorFactoryQuakeMap.h"
+#include "AssetToolsModule.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Editor.h"
+#include "EditorReimportHandler.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/PointLight.h"
 #include "Engine/StaticMesh.h"
@@ -105,6 +107,12 @@ bool FQuakeMapImportTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestTrue(TEXT("sky1 gets the sky material"), bSkyFound);
+
+	// Auto Reimport and the Reimport menu only handle assets whose type says they are imported
+	const TSharedPtr<IAssetTypeActions> Actions = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools")
+		.Get().GetAssetTypeActionsForClass(UQuakeMap::StaticClass()).Pin();
+	TestTrue(TEXT("the map type is imported"), Actions.IsValid() && Actions->IsImportedAsset());
+	TestTrue(TEXT("Unreal finds the reimport"), FReimportManager::Instance()->CanReimport(Map));
 
 	const TArray<TObjectPtr<UStaticMesh>> Before = Map->Meshes;
 	TestEqual(TEXT("reimport succeeds"), Factory->Reimport(Map), EReimportResult::Succeeded);

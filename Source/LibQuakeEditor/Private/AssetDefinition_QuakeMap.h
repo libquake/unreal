@@ -15,6 +15,9 @@ public:
 	virtual FLinearColor GetAssetColor() const override { return FLinearColor(FColor(255, 110, 199)); }
 	virtual TSoftClassPtr<UObject> GetAssetClass() const override { return UQuakeMap::StaticClass(); }
 
+	/** Imported from a file: offers Reimport and lets Auto Reimport pick up changes of the file. */
+	virtual bool CanImport() const override { return true; }
+
 	virtual TConstArrayView<FAssetCategoryPath> GetAssetCategories() const override
 	{
 		static const FAssetCategoryPath Categories[] = { EAssetCategoryPaths::Misc };
