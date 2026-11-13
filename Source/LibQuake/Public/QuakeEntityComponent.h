@@ -47,6 +47,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Quake")
 	FVector GetVector(const FString& Key) const;
 
+	/** "angles" (pitch yaw roll) or the yaw "angle" as an Unreal rotation. */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	FRotator GetRotation() const;
+
+	/**
+	 * The direction a brush entity moves in, e.g. a door or a button: "angle" -1 is up, -2 down, other values and
+	 * "angles" are a direction like GetRotation. Brush entities are not turned by their angle, it is only this.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Quake")
+	FVector GetMoveDirection() const;
+
 	/** "r g b" as 0..1 or 0..255, Fallback if the entity has no such key. */
 	UFUNCTION(BlueprintPure, Category = "Quake")
 	FLinearColor GetColor(const FString& Key, FLinearColor Fallback = FLinearColor::White) const;

@@ -41,6 +41,11 @@ flicker for the `style` key.
 `UQuakeEntityComponent` keeps the keys as text, as they are in the map. `GetKey` and `GetFloat` read them, from
 C++ and from Blueprints. Positions and directions in keys are in Quake units and axes.
 
+Point entities are turned by `angles` (pitch yaw roll) or the yaw `angle`. Brush entities are not: their brushes
+are already where they belong, `angle` is the direction they move in, like in Quake. `GetMoveDirection` gives it
+as an Unreal direction (`-1` up, `-2` down), for door, button or push Blueprints. `GetRotation` turns `angles` or
+`angle` into an Unreal rotation.
+
 ## Targets
 
 `target` and `targetname` connect entities. `Fire` on an entity triggers every entity of the same placed map whose

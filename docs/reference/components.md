@@ -16,6 +16,8 @@ On every actor placed for an entity.
 | `float GetFloat(Key, Fallback)` | the value as a number |
 | `FVector GetVector(Key)` | "x y z" as written, in Quake units and axes |
 | `FLinearColor GetColor(Key, Fallback)` | "r g b" as 0..1 or 0..255 |
+| `FRotator GetRotation()` | `angles` (pitch yaw roll) or `angle` as an Unreal rotation |
+| `FVector GetMoveDirection()` | the direction a brush entity moves in: `angle`, `-1` up, `-2` down, or `angles` |
 | `float Scale` | Unreal units per Quake unit of the map |
 | `FString EntityId` | `<classname>_<n>` in map order, a reimport finds the actor by it |
 | `void Fire(AActor* Activator)` | triggers the entities of the same placed map whose `targetname` is this entity's `target` |

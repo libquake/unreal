@@ -33,6 +33,15 @@ namespace LibQuake
 	}
 
 	/**
+	 * Quake angles (pitch yaw roll, degrees) as an Unreal rotation. A positive Quake pitch looks down and the yaw
+	 * turns counterclockwise seen from above, the mirrored y axis turns all three around.
+	 */
+	inline FRotator ToUnrealRotation(const FVector& QuakeAngles)
+	{
+		return FRotator(-QuakeAngles.X, -QuakeAngles.Y, -QuakeAngles.Z);
+	}
+
+	/**
 	 * The surfaces of an entity of one type, one polygon group per texture with the texture name as material slot.
 	 * SOLID are the visible ones, CLIP the shape of triggers and clip brushes in a bsp, which has no brush hulls.
 	 * UV0 is the texture in repeats, UV1 the lightmap. Returns false if the entity has no such surfaces.

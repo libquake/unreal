@@ -4,6 +4,7 @@
 #include "Misc/Paths.h"
 #include "PhysicsEngine/ConvexElem.h"
 #include "QuakeConversion.h"
+#include "QuakeEntityComponent.h"
 #include "StaticMeshAttributes.h"
 #include "StaticMeshOperations.h"
 
@@ -107,5 +108,32 @@ bool FQuakeConvexElementsTest::RunTest(const FString& Parameters)
 	const TArray<FKConvexElem> None = LibQuake::BuildConvexElements(*World, LibQuake::DefaultScale,
 		[](quakelib::CollisionHull::Type) { return false; });
 	TestEqual(TEXT("filter is applied"), None.Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeAnglesTest, "LibQuake.Conversion.Angles",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeAnglesTest::RunTest(const FString& Parameters)
+{
+	UQuakeEntityComponent* Entity = NewObject<UQuakeEntityComponent>();
+	const auto Direction = [Entity](const TCHAR* Key, const TCHAR* Value)
+	{
+		Entity->Keys.Reset();
+		Entity->Keys.Add(Key, Value);
+		return Entity->GetMoveDirection();
+	};
+
+	// Quake's +y is Unreal's -y
+	TestTrue(TEXT("angle 90 moves to quake's +y"), Direction(TEXT("angle"), TEXT("90")).Equals(FVector(0, -1, 0)));
+	TestTrue(TEXT("angle -1 moves up"), Direction(TEXT("angle"), TEXT("-1")).Equals(FVector::UpVector));
+	TestTrue(TEXT("angle -2 moves down"), Direction(TEXT("angle"), TEXT("-2")).Equals(FVector::DownVector));
+	TestTrue(TEXT("a positive pitch looks down"),
+		Direction(TEXT("angles"), TEXT("45 0 0")).Equals(FVector(1, 0, -1).GetSafeNormal(), 0.001));
+	TestTrue(TEXT("without a key it points along x"), Direction(TEXT("other"), TEXT("1")).Equals(FVector(1, 0, 0)));
+
+	Entity->Keys.Reset();
+	Entity->Keys.Add(TEXT("angles"), TEXT("10 20 30"));
+	TestEqual(TEXT("angles turn all three"), Entity->GetRotation(), FRotator(-10, -20, -30));
 	return true;
 }

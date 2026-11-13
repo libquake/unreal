@@ -24,24 +24,21 @@ namespace
 		return UTF8_TO_TCHAR(Value.c_str());
 	}
 
-	/**
-	 * Placement of a point entity from "origin" and "angle", or the yaw of "angles" (pitch yaw roll). Quake turns
-	 * counterclockwise seen from above, the mirrored y axis turns that around.
-	 */
+	/** Placement of a point entity from "origin" and "angles" (pitch yaw roll), or the yaw "angle". */
 	FTransform PointEntityTransform(const TMap<FString, FString>& Keys, float Scale)
 	{
 		const FVector3f Origin = LibQuakeEditor::ParseVector(Keys.Find(TEXT("origin")));
 
-		float Yaw = 0;
-		if (const FString* Angle = Keys.Find(TEXT("angle")))
+		FVector3f Angles = FVector3f::ZeroVector;
+		if (const FString* AnglesKey = Keys.Find(TEXT("angles")))
 		{
-			Yaw = FCString::Atof(**Angle);
+			Angles = LibQuakeEditor::ParseVector(AnglesKey);
 		}
-		else if (const FString* Angles = Keys.Find(TEXT("angles")))
+		else if (const FString* Angle = Keys.Find(TEXT("angle")))
 		{
-			Yaw = LibQuakeEditor::ParseVector(Angles).Y;
+			Angles.Y = FCString::Atof(**Angle);
 		}
-		return FTransform(FRotator(0, -Yaw, 0), LibQuake::ToUnrealPosition(Origin, Scale));
+		return FTransform(LibQuake::ToUnrealRotation(FVector(Angles)), LibQuake::ToUnrealPosition(Origin, Scale));
 	}
 
 	quakelib::PivotMode ToPivotMode(EQuakePivot Pivot)

@@ -2,6 +2,7 @@
 
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
+#include "QuakeConversion.h"
 
 FString UQuakeEntityComponent::GetKey(const FString& Key) const
 {
@@ -27,6 +28,30 @@ FVector UQuakeEntityComponent::GetVector(const FString& Key) const
 		}
 	}
 	return Result;
+}
+
+FRotator UQuakeEntityComponent::GetRotation() const
+{
+	const FVector Angles = Keys.Contains(TEXT("angles")) ? GetVector(TEXT("angles"))
+		: FVector(0, GetFloat(TEXT("angle")), 0);
+	return LibQuake::ToUnrealRotation(Angles);
+}
+
+FVector UQuakeEntityComponent::GetMoveDirection() const
+{
+	if (!Keys.Contains(TEXT("angles")))
+	{
+		const float Angle = GetFloat(TEXT("angle"));
+		if (Angle == -1)
+		{
+			return FVector::UpVector;
+		}
+		if (Angle == -2)
+		{
+			return FVector::DownVector;
+		}
+	}
+	return GetRotation().Vector();
 }
 
 FLinearColor UQuakeEntityComponent::GetColor(const FString& Key, FLinearColor Fallback) const
