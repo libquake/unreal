@@ -21,8 +21,9 @@ fi
 
 rm -rf "$dest" "$units"
 mkdir -p "$dest" "$units"
-rsync -a "$src/include/" "$dest/include/"
-rsync -a --exclude CMakeLists.txt --exclude 'wrapper.*' "$src/src/" "$dest/src/"
+cp -R "$src/include" "$dest/include"
+cp -R "$src/src" "$dest/src"
+find "$dest/src" \( -name CMakeLists.txt -o -name 'wrapper.*' \) -delete
 cp "$src/LICENSE" "$dest/LICENSE"
 
 (cd "$dest/src" && find . -name '*.cpp' | sed 's#^\./##' | sort) | while read -r file; do

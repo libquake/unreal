@@ -8,7 +8,7 @@ Unreal Engine plugin that imports Quake 1 `.map`, `.bsp` and `.wad` files. A map
 collision from its brushes, lights and entities, placed in levels as a Level Instance. Built on
 [libquake](https://github.com/libquake/libquake), which does the parsing, CSG and uvs.
 
-Experimental. Unreal Engine 5.8, tested on macOS.
+Experimental. Unreal Engine 5.8, tested on macOS and Windows.
 
 ## Install
 
