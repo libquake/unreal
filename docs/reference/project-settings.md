@@ -39,7 +39,7 @@ How much a liquid covers what is behind it, 1 is opaque. A map overrides them wi
 
 | Setting | Default |
 |---|---|
-| `float WaterAlpha` | 0.5 |
+| `float WaterAlpha` | 0.6 |
 | `float SlimeAlpha` | 0.7 |
 | `float LavaAlpha` | 0.85 |
 | `float TeleportAlpha` | 1 |

@@ -79,7 +79,7 @@ public:
 	// "_wateralpha", "_slimealpha", "_lavaalpha" and "_telealpha", as in modern Quake engines.
 
 	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
-	float WaterAlpha = 0.5f;
+	float WaterAlpha = 0.6f;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Liquids", meta = (ClampMin = "0", ClampMax = "1"))
 	float SlimeAlpha = 0.7f;

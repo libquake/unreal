@@ -24,7 +24,8 @@ namespace LibQuakeEditor
 
 	/**
 	 * Puts an unbound post process volume "QuakeExposure" into the current level of World: manual exposure with
-	 * EV100 0, the one the brightness of the lights is calibrated to. It belongs to the level, not to a map.
+	 * EV100 0, the one the brightness of the lights is calibrated to, bloom intensity 2, film slope 0.7 and toe 0.5.
+	 * It belongs to the level, not to a map.
 	 */
 	APostProcessVolume* AddQuakeExposure(UWorld* World);
 }

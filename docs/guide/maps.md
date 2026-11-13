@@ -39,7 +39,7 @@ show from below, and warped by Quake's turbulence as in software Quake and Quake
 
 How much a liquid covers comes from the worldspawn keys `_wateralpha`, `_slimealpha`, `_lavaalpha` and
 `_telealpha`, as in modern Quake engines, and without them from the [project settings](../reference/project-settings.md)
-(water 0.5, slime 0.7, lava 0.85, teleporters 1). Lava is brighter (`LavaBrightness`, 2) and glows with bloom.
+(water 0.6, slime 0.7, lava 0.85, teleporters 1). Lava is brighter (`LavaBrightness`, 2) and glows with bloom.
 `M_QuakeLiquid` is the same without translucency, set it as `LiquidMaterial` for opaque liquids.
 
 Each liquid brush of a placed map also gets a volume of its shape, an `AQuakeLiquidVolume`: a water volume,

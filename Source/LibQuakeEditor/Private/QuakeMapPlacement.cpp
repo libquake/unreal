@@ -302,6 +302,14 @@ namespace LibQuakeEditor
 		Settings.AutoExposureApplyPhysicalCameraExposure = false;
 		Settings.bOverride_AutoExposureBias = true;
 		Settings.AutoExposureBias = 0.0f;
+
+		// a look that suits Quake maps: glowing lava and fullbrights, a flatter tone curve with deeper shadows
+		Settings.bOverride_BloomIntensity = true;
+		Settings.BloomIntensity = 2.0f;
+		Settings.bOverride_FilmSlope = true;
+		Settings.FilmSlope = 0.7f;
+		Settings.bOverride_FilmToe = true;
+		Settings.FilmToe = 0.5f;
 		return Volume;
 	}
 

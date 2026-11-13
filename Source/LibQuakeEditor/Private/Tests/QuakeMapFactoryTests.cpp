@@ -333,6 +333,10 @@ bool FQuakeSettingsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("for the whole level"), Exposure->bUnbound);
 		TestEqual(TEXT("manual exposure"), Exposure->Settings.AutoExposureMethod.GetValue(), AEM_Manual);
 		TestEqual(TEXT("ev100 0"), Exposure->Settings.AutoExposureBias, 0.0f);
+		const FPostProcessSettings& Look = Exposure->Settings;
+		TestTrue(TEXT("bloom"), Look.bOverride_BloomIntensity && Look.BloomIntensity == 2.0f);
+		TestTrue(TEXT("film slope"), Look.bOverride_FilmSlope && Look.FilmSlope == 0.7f);
+		TestTrue(TEXT("film toe"), Look.bOverride_FilmToe && Look.FilmToe == 0.5f);
 		World->EditorDestroyActor(Exposure, true);
 	}
 	return true;

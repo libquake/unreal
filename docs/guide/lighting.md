@@ -23,7 +23,8 @@ surface shows albedo / π times the light in Unreal, and the factor 1.2 matches 
 0). Exposure, ambient light and grading are left to the level, the plugin does not touch them on its own.
 
 Tools > LibQuake > **Add Quake Exposure** puts such a volume into the current level, unbound and labeled
-`QuakeExposure`. It belongs to the level, not to a map: change or delete it like any other volume.
+`QuakeExposure`, with a look that suits Quake maps: bloom intensity 2 for glowing lava and fullbrights, film slope
+0.7 and toe 0.5. It belongs to the level, not to a map: change or delete it like any other volume.
 
 Before a lighting build the editor shows static lights as a preview without shadows.
 
