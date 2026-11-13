@@ -9,6 +9,7 @@ TSoftClassPtr<AActor> UQuakeEntityClasses::Find(const TMap<FString, TSoftClassPt
 	{
 		return *Exact;
 	}
+
 	TSoftClassPtr<AActor> Best;
 	int32 BestLength = -1;
 	for (const auto& [Name, Class] : Classes)

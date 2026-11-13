@@ -12,7 +12,8 @@ namespace
 	FString TestWad()
 	{
 		const FString Base = IPluginManager::Get().FindPlugin(TEXT("LibQuake"))->GetBaseDir();
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(Base, TEXT("Tests"), TEXT("Data"), TEXT("sky_alpha.wad")));
+		return FPaths::ConvertRelativePathToFull(
+			FPaths::Combine(Base, TEXT("Tests"), TEXT("Data"), TEXT("sky_alpha.wad")));
 	}
 }
 

@@ -1,10 +1,10 @@
 #include "QuakeMapPlacement.h"
 
 #include "Components/StaticMeshComponent.h"
+#include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
-#include "Engine/CollisionProfile.h"
 #include "QuakeEntity.h"
 #include "QuakeEntityActors.h"
 #include "QuakeEntityClasses.h"
@@ -20,15 +20,24 @@ namespace
 	/** What an actor of a placed map is made from: an entity or the sun of the worldspawn. */
 	struct FEntitySpec
 	{
+		/** "<classname>_<n>" in map order, "sun" for the sun. */
 		FString Id;
+
 		UClass* Class = nullptr;
+
+		/** Relative to the map actor. */
 		FTransform Transform;
-		/** The sun gets the keys of the worldspawn. */
+
+		/** The entity, for the sun the worldspawn. */
 		const FQuakeMapEntity* Entity = nullptr;
+
 		bool bSun = false;
+
+		/** The mesh of a brush entity, null for point entities. */
 		UStaticMesh* Mesh = nullptr;
 	};
 
+	/** Every actor the map should have, in map order. */
 	TArray<FEntitySpec> MakeSpecs(const UQuakeMap* Map)
 	{
 		TArray<FEntitySpec> Specs;
@@ -59,6 +68,7 @@ namespace
 		return Specs;
 	}
 
+	/** An instance component, saved with the actor and part of undo. Attach and register it afterwards. */
 	template <typename T>
 	T* AddComponent(AActor* Actor, const TCHAR* Name)
 	{
@@ -94,6 +104,7 @@ namespace
 				return Cast<UStaticMeshComponent>(Component);
 			}
 		}
+
 		UStaticMeshComponent* Mesh = AddComponent<UStaticMeshComponent>(Actor, TEXT("QuakeMesh"));
 		if (USceneComponent* Root = Actor->GetRootComponent())
 		{
@@ -107,6 +118,7 @@ namespace
 		return Mesh;
 	}
 
+	/** A new actor for the spec, attached to the map actor. ApplySpec gives it its place and keys. */
 	AActor* SpawnEntityActor(AQuakeMapActor* MapActor, const FEntitySpec& Spec)
 	{
 		FActorSpawnParameters Parameters;
@@ -118,6 +130,7 @@ namespace
 			return nullptr;
 		}
 		Actor->SetActorLabel(Spec.Id);
+
 		if (Spec.Mesh)
 		{
 			FindOrAddMeshComponent(Actor);
@@ -129,10 +142,15 @@ namespace
 			Actor->SetRootComponent(Root);
 			Root->RegisterComponent();
 		}
+
 		Actor->AttachToActor(MapActor, FAttachmentTransformRules::KeepWorldTransform);
 		return Actor;
 	}
 
+	/**
+	 * Puts the actor at its place relative to the map and gives it its mesh and keys, then lets IQuakeEntity actors
+	 * apply the keys. Runs on new actors and on every update, everything it sets comes from the map.
+	 */
 	void ApplySpec(AActor* Actor, const FEntitySpec& Spec, const UQuakeMap* Map)
 	{
 		Actor->Modify();
@@ -175,6 +193,7 @@ namespace LibQuakeEditor
 		{
 			return nullptr;
 		}
+
 		MapActor->SetActorLabel(Map->GetName());
 		MapActor->Map = Map;
 		SyncMapActor(MapActor);
@@ -190,21 +209,24 @@ namespace LibQuakeEditor
 			return;
 		}
 
+		// an entity actor copied in the editor has the same id, the map keeps updating one of them
 		TMap<FString, AActor*> Existing;
 		for (AActor* Actor : MapActor->GetEntityActors())
 		{
-			Existing.Add(Actor->FindComponentByClass<UQuakeEntityComponent>()->EntityId, Actor);
+			Existing.FindOrAdd(Actor->FindComponentByClass<UQuakeEntityComponent>()->EntityId, Actor);
 		}
 
 		for (const FEntitySpec& Spec : MakeSpecs(Map))
 		{
 			AActor* Actor = nullptr;
 			Existing.RemoveAndCopyValue(Spec.Id, Actor);
+			// a different class for the entity, e.g. after changing the entity classes, needs a new actor
 			if (Actor && Actor->GetClass() != Spec.Class)
 			{
 				World->EditorDestroyActor(Actor, true);
 				Actor = nullptr;
 			}
+
 			if (!Actor)
 			{
 				Actor = SpawnEntityActor(MapActor, Spec);
@@ -215,6 +237,7 @@ namespace LibQuakeEditor
 			}
 		}
 
+		// what is left belongs to entities that are no longer in the map
 		for (const auto& [Id, Actor] : Existing)
 		{
 			World->EditorDestroyActor(Actor, true);

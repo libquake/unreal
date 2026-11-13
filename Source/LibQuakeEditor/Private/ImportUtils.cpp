@@ -59,8 +59,8 @@ namespace LibQuakeEditor
 	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used)
 	{
 		// the name is used for the package too, which forbids more characters than objects do ('*' for liquids)
-		const FString Base =
-			ObjectTools::SanitizeInvalidChars(ObjectTools::SanitizeObjectName(QuakeName), INVALID_LONGPACKAGE_CHARACTERS);
+		const FString Base = ObjectTools::SanitizeInvalidChars(ObjectTools::SanitizeObjectName(QuakeName),
+			INVALID_LONGPACKAGE_CHARACTERS);
 
 		// collisions get a number in the order of the source, which is stable, so reimports keep their names
 		FString Name = Base;

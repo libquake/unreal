@@ -12,11 +12,11 @@ float LibQuake::ToUnrealBrightness(float Level)
 	return Level * 0.5f / 128.0f * UE_PI * 1.2f;
 }
 
-// Unreal's setters ignore static lights once they are registered, the properties are set directly.
-
 void AQuakePointLight::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
 {
 	const float Value = FMath::Max(Entity->GetFloat(TEXT("light"), 300.0f), 0.0f);
+
+	// Unreal's setters ignore static lights once they are registered, the properties are set directly
 	UPointLightComponent* Light = PointLightComponent;
 	Light->Modify();
 	Light->SetMobility(EComponentMobility::Static);
@@ -31,6 +31,7 @@ void AQuakePointLight::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* En
 
 void AQuakePlayerStart::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
 {
+	// the start stands at the entity's origin already
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	AddActorWorldOffset(FVector(0, 0, HalfHeight - 24.0f * Entity->Scale));
 }
@@ -45,10 +46,14 @@ void AQuakeSun::ApplyQuakeEntity_Implementation(UQuakeEntityComponent* Entity)
 		const double Yaw = FMath::DegreesToRadians(Angles.X);
 		const double Pitch = FMath::DegreesToRadians(Angles.Y);
 		// Quake's y axis points the other way
-		Direction = FVector(FMath::Cos(Yaw) * FMath::Cos(Pitch), -FMath::Sin(Yaw) * FMath::Cos(Pitch), FMath::Sin(Pitch));
+		Direction = FVector(
+			FMath::Cos(Yaw) * FMath::Cos(Pitch),
+			-FMath::Sin(Yaw) * FMath::Cos(Pitch),
+			FMath::Sin(Pitch));
 	}
 	SetActorRotation(Direction.Rotation());
 
+	// like the point light, the properties are set directly
 	UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(GetLightComponent());
 	Light->Modify();
 	Light->SetMobility(EComponentMobility::Static);

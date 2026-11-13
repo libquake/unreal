@@ -99,6 +99,7 @@ void FLibQuakeEditorModule::ShutdownModule()
 {
 	AQuakeMapActor::RebuildHandler = nullptr;
 	FCoreDelegates::GetOnPostEngineInit().RemoveAll(this);
+
 	if (GEditor)
 	{
 		if (UImportSubsystem* Imports = GEditor->GetEditorSubsystem<UImportSubsystem>())
@@ -122,6 +123,7 @@ void FLibQuakeEditorModule::OnAssetReimport(UObject* Asset)
 	{
 		return;
 	}
+
 	// the reimport is still running, the placed maps follow once it is done
 	ReimportedMaps.Add(Map);
 	GEditor->GetTimerManager()->SetTimerForNextTick(FTimerDelegate::CreateRaw(this,
@@ -136,6 +138,7 @@ void FLibQuakeEditorModule::SyncReimportedMaps()
 	{
 		return;
 	}
+
 	for (TActorIterator<AQuakeMapActor> It(World); It; ++It)
 	{
 		if (Maps.Contains(TWeakObjectPtr<UQuakeMap>(It->Map.Get())))

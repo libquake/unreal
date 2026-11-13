@@ -82,19 +82,23 @@ bool UQuakeWadFactory::ImportWad(UQuakeWad* Wad, const FString& Filename)
 	for (const LibQuake::FWadTexture& Source : Loaded)
 	{
 		const FString Name = LibQuakeEditor::UniqueAssetName(Source.Name, Used);
+		const auto Write = [&](const FString& AssetName, const TArray<uint8>& Rgba)
+		{
+			return LibQuakeEditor::WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(AssetName, Used), Source.Width,
+				Source.Height, Rgba);
+		};
+
 		FQuakeWadTexture& Entry = Wad->Textures.AddDefaulted_GetRef();
 		Entry.Name = Source.Name;
 		Entry.bAlpha = Source.bAlpha;
 		Entry.Texture = LibQuakeEditor::WriteTexture(Folder, Name, Source.Width, Source.Height, Source.Rgba);
 		if (!Source.Emission.IsEmpty())
 		{
-			Entry.Emission = LibQuakeEditor::WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_emission"), Used), Source.Width,
-				Source.Height, Source.Emission);
+			Entry.Emission = Write(Name + TEXT("_emission"), Source.Emission);
 		}
 		if (!Source.SkyFront.IsEmpty())
 		{
-			Entry.SkyFront = LibQuakeEditor::WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_front"), Used), Source.Width,
-				Source.Height, Source.SkyFront);
+			Entry.SkyFront = Write(Name + TEXT("_front"), Source.SkyFront);
 		}
 	}
 
