@@ -39,30 +39,32 @@ namespace
 	// (_range 0.5).
 	constexpr float ExposureScale = 1.2f;
 
-	/** Illuminance in lux that shows a surface like Quake light level Level * 0.5 does. */
-	float ToLux(float Level)
+	/**
+	 * Unreal brightness that shows a surface like Quake light level Level * 0.5 does: lux for the sun, the unitless
+	 * intensity at the center of a point light without inverse square falloff.
+	 */
+	float ToUnrealBrightness(float Level)
 	{
 		return Level * 0.5f / 128.0f * UE_PI * ExposureScale;
 	}
 
 	/**
-	 * Quake's "light" fades linearly, a light of value L lights a surface to level 128 about sqrt(2 pi L) units
-	 * away. An inverse square light reaches 128 at the same distance with L * 2 pi² * 1.2 / m² candela, m being
-	 * Quake units per meter. It ends where it adds less than 1/40 of the texture brightness.
+	 * Quake's "light" is brightness and radius at once, the light fades linearly from its value to 0 at the radius.
+	 * Unreal fades by (1 - d²/r²)^exponent, 2 comes closest to linear.
 	 */
 	void SetupLight(APointLight* Light, const FQuakeMapEntity& Entity, float Scale)
 	{
 		const FString* LightKey = Entity.Keys.Find(TEXT("light"));
 		const float Value = FMath::Max(LightKey ? FCString::Atof(**LightKey) : 300.0f, 0.0f);
-		const float UnitsPerMeter = 100.0f / Scale;
 
 		// the setters ignore static lights once they are registered, the properties are set directly
 		UPointLightComponent* Component = Light->PointLightComponent;
 		Component->SetMobility(EComponentMobility::Static);
-		Component->bUseInverseSquaredFalloff = true;
-		Component->IntensityUnits = ELightUnits::Candelas;
-		Component->Intensity = Value * 2.0f * UE_PI * UE_PI * ExposureScale / (UnitsPerMeter * UnitsPerMeter);
-		Component->AttenuationRadius = (FMath::Sqrt(1.0f + 1024.0f * Value) - 1.0f) * 0.5f * Scale;
+		Component->bUseInverseSquaredFalloff = false;
+		Component->LightFalloffExponent = 2.0f;
+		Component->IntensityUnits = ELightUnits::Unitless;
+		Component->Intensity = ToUnrealBrightness(Value);
+		Component->AttenuationRadius = Value * Scale;
 		if (const FString* Color = Entity.Keys.Find(TEXT("_color")))
 		{
 			Component->LightColor = ParseColor(Color).ToFColor(true);
@@ -174,7 +176,7 @@ namespace
 		ADirectionalLight* Sun = Spawn<ADirectionalLight>(Level, TEXT("sun"), FTransform(Direction.Rotation()));
 		UDirectionalLightComponent* Component = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
 		Component->SetMobility(EComponentMobility::Static);
-		Component->Intensity = ToLux(Value);
+		Component->Intensity = ToUnrealBrightness(Value);
 		if (const FString* Color = Worldspawn.Keys.Find(TEXT("_sunlight_color")))
 		{
 			Component->LightColor = ParseColor(Color).ToFColor(true);

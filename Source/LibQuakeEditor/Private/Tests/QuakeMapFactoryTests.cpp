@@ -158,13 +158,11 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 
 	// "light" "300": the static light keeps the values even though Unreal's setters ignore static lights
 	const UPointLightComponent* LightComponent = Cast<APointLight>(LightActor)->PointLightComponent;
-	const double UnitsPerMeter = 100.0 / Map->Settings.Scale;
-	TestTrue(TEXT("inverse square falloff"), LightComponent->bUseInverseSquaredFalloff);
-	TestEqual(TEXT("in candela"), LightComponent->IntensityUnits, ELightUnits::Candelas);
-	TestEqual(TEXT("level 128 at sqrt(2 pi 300) units"), (double)LightComponent->Intensity,
-		300.0 * 2.0 * UE_DOUBLE_PI * UE_DOUBLE_PI * 1.2 / (UnitsPerMeter * UnitsPerMeter), 0.001);
-	TestEqual(TEXT("radius where the light fades out"), (double)LightComponent->AttenuationRadius,
-		(FMath::Sqrt(1.0 + 1024.0 * 300.0) - 1.0) * 0.5 * Map->Settings.Scale, 0.01);
+	TestFalse(TEXT("fades like quake, not by the inverse square"), LightComponent->bUseInverseSquaredFalloff);
+	TestEqual(TEXT("level 150 at the center after quake's range scale"), (double)LightComponent->Intensity,
+		150.0 / 128.0 * UE_DOUBLE_PI * 1.2, 0.001);
+	TestEqual(TEXT("radius is the light value"), (double)LightComponent->AttenuationRadius,
+		300.0 * Map->Settings.Scale, 0.01);
 
 	const FQuakeMapEntity* Start = Map->Entities.FindByPredicate(
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("info_player_start"); });
