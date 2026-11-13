@@ -3,60 +3,22 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Engine/Texture2D.h"
+#include "ImportUtils.h"
 #include "LibQuakeCore.h"
-#include "LibQuakeEditorModule.h"
-#include "Logging/MessageLog.h"
 #include "Misc/PackageName.h"
-#include "Misc/Paths.h"
-#include "ObjectTools.h"
 #include "QuakeWad.h"
 #include "UObject/Package.h"
 
-#define LOCTEXT_NAMESPACE "QuakeWadFactory"
-
 namespace
 {
-	/**
-	 * Quake names may contain characters assets cannot have ('*', '{', '+'). Collisions after replacing them get a
-	 * number, in the wad's (sorted) order, so a reimport ends up with the same names.
-	 */
-	FString UniqueAssetName(const FString& QuakeName, TSet<FString>& Used)
-	{
-		const FString Base = ObjectTools::SanitizeObjectName(QuakeName);
-		FString Name = Base;
-		for (int32 Suffix = 1; Used.Contains(Name); Suffix++)
-		{
-			Name = FString::Printf(TEXT("%s_%d"), *Base, Suffix);
-		}
-		Used.Add(Name);
-		return Name;
-	}
-
-	UPackage* FindOrCreatePackage(const FString& PackageName)
-	{
-		if (UPackage* Loaded = FindPackage(nullptr, *PackageName))
-		{
-			return Loaded;
-		}
-		if (FPackageName::DoesPackageExist(PackageName))
-		{
-			return LoadPackage(nullptr, *PackageName, LOAD_None);
-		}
-		return CreatePackage(*PackageName);
-	}
-
 	/** Point filtered and uncompressed, so the pixels stay as they are in the wad. */
 	UTexture2D* WriteTexture(const FString& Folder, const FString& Name, int32 Width, int32 Height,
 		const TArray<uint8>& Rgba)
 	{
-		UPackage* Package = FindOrCreatePackage(Folder / Name);
-		UTexture2D* Texture = FindObject<UTexture2D>(Package, *Name);
-		const bool bCreated = Texture == nullptr;
-		if (bCreated)
-		{
-			Texture = NewObject<UTexture2D>(Package, *Name, RF_Public | RF_Standalone | RF_Transactional);
-		}
-		else
+		UPackage* Package = LibQuakeEditor::FindOrCreatePackage(Folder / Name);
+		bool bCreated = false;
+		UTexture2D* Texture = LibQuakeEditor::FindOrCreateAsset<UTexture2D>(Package, Name, bCreated);
+		if (!bCreated)
 		{
 			Texture->PreEditChange(nullptr);
 		}
@@ -142,9 +104,8 @@ bool UQuakeWadFactory::ImportWad(UQuakeWad* Wad, const FString& Filename)
 	FString Error;
 	if (!LibQuake::LoadWad(Filename, Loaded, Error))
 	{
-		FMessageLog(LibQuakeEditor::LogName).Error(FText::Format(LOCTEXT("WadFailed", "{0}: {1}"),
-			FText::FromString(FPaths::GetCleanFilename(Filename)), FText::FromString(Error)));
-		FMessageLog(LibQuakeEditor::LogName).Notify(LOCTEXT("ImportFailed", "Quake import failed"));
+		LibQuakeEditor::ReportError(Filename, Error);
+		LibQuakeEditor::NotifyIfReported();
 		return false;
 	}
 
@@ -155,19 +116,19 @@ bool UQuakeWadFactory::ImportWad(UQuakeWad* Wad, const FString& Filename)
 	Wad->Textures.Reset(Loaded.Num());
 	for (const LibQuake::FWadTexture& Source : Loaded)
 	{
-		const FString Name = UniqueAssetName(Source.Name, Used);
+		const FString Name = LibQuakeEditor::UniqueAssetName(Source.Name, Used);
 		FQuakeWadTexture& Entry = Wad->Textures.AddDefaulted_GetRef();
 		Entry.Name = Source.Name;
 		Entry.bAlpha = Source.bAlpha;
 		Entry.Texture = WriteTexture(Folder, Name, Source.Width, Source.Height, Source.Rgba);
 		if (!Source.Emission.IsEmpty())
 		{
-			Entry.Emission = WriteTexture(Folder, UniqueAssetName(Name + TEXT("_emission"), Used), Source.Width,
+			Entry.Emission = WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_emission"), Used), Source.Width,
 				Source.Height, Source.Emission);
 		}
 		if (!Source.SkyFront.IsEmpty())
 		{
-			Entry.SkyFront = WriteTexture(Folder, UniqueAssetName(Name + TEXT("_front"), Used), Source.Width,
+			Entry.SkyFront = WriteTexture(Folder, LibQuakeEditor::UniqueAssetName(Name + TEXT("_front"), Used), Source.Width,
 				Source.Height, Source.SkyFront);
 		}
 	}
@@ -176,5 +137,3 @@ bool UQuakeWadFactory::ImportWad(UQuakeWad* Wad, const FString& Filename)
 	Wad->MarkPackageDirty();
 	return true;
 }
-
-#undef LOCTEXT_NAMESPACE
