@@ -11,7 +11,7 @@ same entity are removed. `func_group` and `func_detail` are separate entities an
 | `skip`, `hint`, `hintskip`, `nodraw`, `caulk`, `origin` | neither drawn nor solid |
 | `sky...` | `M_QuakeSky`, see [Lighting](lighting.md) |
 | `{...` | `M_QuakeMasked`, transparent where the palette index is 255 |
-| everything else | `M_Quake`, fullbright pixels as emissive |
+| everything else | `M_Quake`, fullbright pixels as emissive, matte (roughness 1, specular 0) like in Quake |
 
 Brush entities without visible faces, like triggers, get a mesh made of their brush hulls. It is never drawn, it
 is there for collision and overlaps.

@@ -57,7 +57,8 @@ def quake_surface(name, masked):
     lib.connect_material_property(albedo, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
     lib.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     lib.connect_material_property(constant(material, 1.0, -250, 400), "", unreal.MaterialProperty.MP_ROUGHNESS)
-    lib.connect_material_property(constant(material, 0.2, -250, 500), "", unreal.MaterialProperty.MP_SPECULAR)
+    # Quake has no specular at all, 0 also turns off the fresnel sheen at grazing angles
+    lib.connect_material_property(constant(material, 0.0, -250, 500), "", unreal.MaterialProperty.MP_SPECULAR)
 
     if masked:
         lib.connect_material_property(albedo, "A", unreal.MaterialProperty.MP_OPACITY_MASK)
