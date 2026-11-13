@@ -2,27 +2,21 @@
 
 #include "CoreMinimal.h"
 
-class AActor;
-class ULevel;
+class AQuakeMapActor;
 class UQuakeMap;
 class UWorld;
 
 namespace LibQuakeEditor
 {
-	/**
-	 * Spawns the map into Level at the world origin. Every entity gets a UQuakeEntityComponent with its keys and
-	 * the actor class mapped to its class name, or by default a static mesh actor, point light, player start or an
-	 * empty actor.
-	 */
-	TArray<AActor*> SpawnMapActors(const UQuakeMap* Map, ULevel* Level);
+	/** Places the map in the current level of World at Transform: an AQuakeMapActor and its entity actors. */
+	AQuakeMapActor* PlaceMap(UQuakeMap* Map, UWorld* World, const FTransform& Transform);
 
 	/**
-	 * Places the map in the current level of World at Transform. The first time, the actors are spawned and handed to
-	 * Unreal's Create Level Instance, which makes them the map's level. Later placements add a Level Instance of that
-	 * level. Runs a garbage collection, so it belongs in a menu action, not in an import or a drag and drop.
+	 * Brings the entity actors of a placed map in line with its map. Every entity gets an actor of the class mapped
+	 * to its class name, or a static mesh actor for brush entities and an AQuakePointEntity otherwise. An entity
+	 * keeps its actor while the class stays the same, actors of entities that are gone are deleted. The actor's
+	 * place, mesh and keys are set and actors implementing IQuakeEntity apply the keys. The worldspawn adds a sun
+	 * ("_sunlight") and the map an exposure volume (bManualExposure).
 	 */
-	AActor* PlaceMap(UQuakeMap* Map, UWorld* World, const FTransform& Transform);
-
-	/** Whether the level made by an earlier placement still exists. */
-	bool HasLevel(const UQuakeMap* Map);
+	void SyncMapActor(AQuakeMapActor* MapActor);
 }

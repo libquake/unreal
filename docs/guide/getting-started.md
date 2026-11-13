@@ -27,10 +27,12 @@ meshes, no wad needed. A bsp has no brush hulls, its meshes are their own collis
 
 ## Placing
 
-Right click the map > **Place in Level**. The first time, the meshes, lights and entities are spawned and handed to
-Unreal's Create Level Instance: Unreal asks where to save the new level (`<map>_Generated/L_<map>` is suggested)
-and puts a Level Instance of it into the open level. After that the map can also be dragged into the viewport like
-any other asset, every placement is another instance of the same level.
+Drag the map into the viewport, or right click it > **Place in Level** to put it at the origin. The level gets a
+`Quake Map Actor` with an actor per entity attached to it: static mesh actors for the brushes, lights, a player
+start and so on, see [Entities](entities.md). Moving the map actor moves the whole map, the entity actors can be
+selected and edited one by one. Deleting the map actor deletes them with it.
+
+The same map can be placed any number of times, each placement has its own actors.
 
 ## TrenchBroom
 

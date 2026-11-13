@@ -1,8 +1,7 @@
 #include "ActorFactoryQuakeMap.h"
 
-#include "LevelInstance/LevelInstanceActor.h"
-#include "LevelInstance/LevelInstanceInterface.h"
 #include "QuakeMap.h"
+#include "QuakeMapActor.h"
 #include "QuakeMapPlacement.h"
 
 #define LOCTEXT_NAMESPACE "ActorFactoryQuakeMap"
@@ -10,33 +9,30 @@
 UActorFactoryQuakeMap::UActorFactoryQuakeMap()
 {
 	DisplayName = LOCTEXT("DisplayName", "Quake Map");
-	NewActorClass = ALevelInstance::StaticClass();
+	NewActorClass = AQuakeMapActor::StaticClass();
 }
 
 bool UActorFactoryQuakeMap::CanCreateActorFrom(const FAssetData& AssetData, FText& OutErrorMsg)
 {
-	if (!AssetData.IsInstanceOf<UQuakeMap>())
-	{
-		return false;
-	}
-	const UQuakeMap* Map = Cast<UQuakeMap>(AssetData.GetAsset());
-	if (!Map || !LibQuakeEditor::HasLevel(Map))
-	{
-		OutErrorMsg = LOCTEXT("NoLevel", "Place the map once with right click > Place in Level, that makes its level.");
-		return false;
-	}
-	return true;
+	return AssetData.IsInstanceOf<UQuakeMap>();
 }
 
 void UActorFactoryQuakeMap::PostSpawnActor(UObject* Asset, AActor* NewActor)
 {
 	Super::PostSpawnActor(Asset, NewActor);
-	ILevelInstanceInterface* Instance = CastChecked<ILevelInstanceInterface>(NewActor);
-	if (const UQuakeMap* Map = Cast<UQuakeMap>(Asset))
+	AQuakeMapActor* MapActor = CastChecked<AQuakeMapActor>(NewActor);
+	MapActor->Map = Cast<UQuakeMap>(Asset);
+	// the preview while dragging is transient, the entities come with the actor that is dropped
+	if (!NewActor->HasAnyFlags(RF_Transient))
 	{
-		Instance->SetWorldAsset(Map->Level);
-		Instance->LoadLevelInstance();
+		LibQuakeEditor::SyncMapActor(MapActor);
 	}
+}
+
+UObject* UActorFactoryQuakeMap::GetAssetFromActorInstance(AActor* ActorInstance)
+{
+	const AQuakeMapActor* MapActor = Cast<AQuakeMapActor>(ActorInstance);
+	return MapActor ? MapActor->Map : nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE

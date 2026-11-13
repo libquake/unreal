@@ -15,10 +15,10 @@ In Quake a surface at light level 128 shows its texture as it is. The light tool
 units. Unreal fades by (1 - d²/r²)^exponent without inverse square falloff, an exponent of 2 is close to linear.
 The intensity is `light · 0.5 / 128 · π · 1.2` (unitless), the sun gets the same in lux from `_sunlight`. A lit
 surface shows albedo / π times the light in Unreal, and the factor 1.2 matches the exposure the map brings along:
-the level gets an unbound post process volume `exposure` with manual exposure and a bias of 0. Without it
+the map gets an unbound post process volume `exposure` with manual exposure and a bias of 0. Without it
 Unreal's auto exposure brightens dark rooms and darkens lit ones, which flattens the light of a Quake map. To use
-the exposure of your own level, delete the volume or turn off `bManualExposure` in the
-[map settings](../reference/map-settings.md) before placing.
+the exposure of your own level, turn off `bManualExposure` in the [map settings](../reference/map-settings.md),
+placed maps lose the volume with the next reimport or Rebuild.
 
 Before a lighting build the editor shows static lights as a preview without shadows.
 
@@ -31,8 +31,3 @@ about one texel per `LuxelSize` Quake units, 16 by default like Quake.
 
 Sky textures get `M_QuakeSky`: unlit, both layers projected along the view direction and scrolling like in Quake.
 Sky faces cast no shadows, in Quake they are openings and the sun comes through them.
-
-## Level Instances
-
-Baking static light into Level Instances is experimental in Unreal. If a build leaves placed maps dark, break the
-Level Instance into actors (right click > Level > Break) before baking.

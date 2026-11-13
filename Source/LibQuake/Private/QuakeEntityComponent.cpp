@@ -14,6 +14,35 @@ float UQuakeEntityComponent::GetFloat(const FString& Key, float Fallback) const
 	return Value ? FCString::Atof(**Value) : Fallback;
 }
 
+FVector UQuakeEntityComponent::GetVector(const FString& Key) const
+{
+	FVector Result = FVector::ZeroVector;
+	if (const FString* Value = Keys.Find(Key))
+	{
+		TArray<FString> Parts;
+		Value->ParseIntoArrayWS(Parts);
+		for (int32 i = 0; i < 3 && i < Parts.Num(); i++)
+		{
+			Result[i] = FCString::Atod(*Parts[i]);
+		}
+	}
+	return Result;
+}
+
+FLinearColor UQuakeEntityComponent::GetColor(const FString& Key, FLinearColor Fallback) const
+{
+	if (!Keys.Contains(Key))
+	{
+		return Fallback;
+	}
+	FVector Rgb = GetVector(Key);
+	if (Rgb.GetMax() > 1.0)
+	{
+		Rgb /= 255.0;
+	}
+	return FLinearColor(Rgb.X, Rgb.Y, Rgb.Z);
+}
+
 void UQuakeEntityComponent::Fire(AActor* Activator)
 {
 	const FString Target = GetKey(TEXT("target"));
@@ -22,15 +51,23 @@ void UQuakeEntityComponent::Fire(AActor* Activator)
 		return;
 	}
 
-	// each placement of a map is its own level, targets stay within it
-	const ULevel* Level = GetOwner()->GetLevel();
-	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	// targets stay within the map the entity belongs to, the actors attached to the same map actor
+	TArray<AActor*> Candidates;
+	if (const AActor* Map = GetOwner()->GetAttachParentActor())
 	{
-		if (It->GetLevel() != Level)
+		Map->GetAttachedActors(Candidates);
+	}
+	else
+	{
+		for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 		{
-			continue;
+			Candidates.Add(*It);
 		}
-		UQuakeEntityComponent* Other = It->FindComponentByClass<UQuakeEntityComponent>();
+	}
+
+	for (AActor* Candidate : Candidates)
+	{
+		UQuakeEntityComponent* Other = Candidate->FindComponentByClass<UQuakeEntityComponent>();
 		if (Other && Other->GetKey(TEXT("targetname")) == Target)
 		{
 			Other->OnTriggered.Broadcast(Activator);

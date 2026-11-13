@@ -8,7 +8,6 @@
 class UAssetImportData;
 class UQuakeEntityClasses;
 class UStaticMesh;
-class UWorld;
 
 USTRUCT(BlueprintType)
 struct LIBQUAKE_API FQuakeMapSettings
@@ -28,13 +27,13 @@ struct LIBQUAKE_API FQuakeMapSettings
 	float LuxelSize = 16.0f;
 
 	/**
-	 * Put a post process volume with a fixed exposure into the level, the brightness of the lights is calibrated to
+	 * Put a post process volume with a fixed exposure into the map, the brightness of the lights is calibrated to
 	 * it. Without it, Unreal's auto exposure brightens dark rooms and darkens lit ones.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lighting")
 	bool bManualExposure = true;
 
-	/** Actor classes for entity classes, used when the map is placed. */
+	/** Actor classes for entity classes of this map, they come before the ones in the project settings. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Entities")
 	TObjectPtr<UQuakeEntityClasses> EntityClasses;
 };
@@ -66,9 +65,9 @@ struct LIBQUAKE_API FQuakeMapEntity
 };
 
 /**
- * An imported .map or .bsp file with a static mesh per brush entity and its entities. Placed the first time, the map becomes
- * a level that later placements reuse as Level Instances. The .map stays the source: everything in Generated is
- * rebuilt on every reimport.
+ * An imported .map or .bsp file with a static mesh per brush entity and its entities. Dragged into a level it
+ * becomes an AQuakeMapActor with an actor per entity. The file stays the source: everything in Generated is
+ * rebuilt on every reimport, and placed maps follow.
  */
 UCLASS(BlueprintType)
 class LIBQUAKE_API UQuakeMap : public UObject
@@ -84,10 +83,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Generated")
 	TArray<FQuakeMapEntity> Entities;
-
-	/** The level made from this map when it was first placed, null until then. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Generated")
-	TSoftObjectPtr<UWorld> Level;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(VisibleAnywhere, Instanced, Category = "Import")

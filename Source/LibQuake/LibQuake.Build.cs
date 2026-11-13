@@ -6,7 +6,7 @@ public class LibQuake : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "LibQuakeCore" });
+		PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "DeveloperSettings", "Engine", "LibQuakeCore" });
 		PrivateDependencyModuleNames.AddRange(new[] { "MeshDescription", "StaticMeshDescription" });
 	}
 }

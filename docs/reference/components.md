@@ -14,14 +14,38 @@ On every actor placed for an entity.
 | `FQuakeEntityTriggered OnTriggered` | called with the activator when another entity targets this one |
 | `FString GetKey(Key)` | the value, empty if the entity has no such key |
 | `float GetFloat(Key, Fallback)` | the value as a number |
-| `void Fire(AActor* Activator)` | triggers the entities of the same placement whose `targetname` is this entity's `target` |
+| `FVector GetVector(Key)` | "x y z" as written, in Quake units and axes |
+| `FLinearColor GetColor(Key, Fallback)` | "r g b" as 0..1 or 0..255 |
+| `float Scale` | Unreal units per Quake unit of the map |
+| `FString EntityId` | `<classname>_<n>` in map order, a reimport finds the actor by it |
+| `void Fire(AActor* Activator)` | triggers the entities of the same placed map whose `targetname` is this entity's `target` |
 
 Trigger brushes (class names starting with `trigger_`) fire by themselves when a pawn enters them,
 `trigger_once` only the first time.
 
+## IQuakeEntity
+
+Interface for actors placed for an entity. `ApplyQuakeEntity(UQuakeEntityComponent* Entity)` is a Blueprint native
+event, called when the map is placed and after every reimport.
+
+## AQuakeMapActor
+
+A placed map. `Map` is the `UQuakeMap`, `GetEntityActors()` the attached entity actors. Destroying it destroys
+them. `Rebuild` (editor only) brings them in line with the map.
+
+## Entity actors
+
+| Class | |
+|---|---|
+| `AQuakePointLight` | point light from `light` and `_color` |
+| `AQuakePlayerStart` | player start standing on the floor |
+| `AQuakeSun` | directional light from `_sunlight`, `_sunlight_color`, `_sun_mangle` of the worldspawn |
+| `AQuakePointEntity` | empty actor with a sprite, for point entities without a class |
+
 ## UQuakeEntityClasses
 
-Data asset with `TMap<FString, TSoftClassPtr<AActor>> Classes`, entity class name to actor class.
+Data asset with `TMap<FString, TSoftClassPtr<AActor>> Classes`, entity class name (or prefix ending in `*`) to
+actor class. `Resolve` looks up a map's classes, then the project settings (`ULibQuakeSettings::EntityClasses`).
 
 ## UQuakeWad
 

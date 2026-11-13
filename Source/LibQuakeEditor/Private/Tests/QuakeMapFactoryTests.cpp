@@ -14,8 +14,11 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/BodySetup.h"
+#include "QuakeEntityActors.h"
+#include "QuakeEntityClasses.h"
 #include "QuakeEntityComponent.h"
 #include "QuakeMap.h"
+#include "QuakeMapActor.h"
 #include "QuakeMapFactory.h"
 #include "QuakeMapPlacement.h"
 #include "QuakeTriggerProbe.h"
@@ -110,42 +113,47 @@ bool FQuakeMapImportTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// Making the level goes through Unreal's Save As dialog, which a headless run cannot answer. This covers what is
-// handed to it, and that dragging a map without a level is refused.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeMapSpawnTest, "LibQuake.Editor.SpawnMap",
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeMapPlaceTest, "LibQuake.Editor.PlaceMap",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
+bool FQuakeMapPlaceTest::RunTest(const FString& Parameters)
 {
-	UQuakeMap* Map = ImportTestMap(TEXT("sky_alpha_spawn"));
+	UQuakeMap* Map = ImportTestMap(TEXT("sky_alpha_place"));
 	if (!TestNotNull(TEXT("map imports"), Map))
 	{
 		return false;
 	}
 
+	FText Error;
+	TestTrue(TEXT("a map can be dragged into a level"),
+		GetMutableDefault<UActorFactoryQuakeMap>()->CanCreateActorFrom(FAssetData(Map), Error));
+
 	UWorld* World = GEditor->GetEditorWorldContext().World();
-	const TArray<AActor*> Actors = LibQuakeEditor::SpawnMapActors(Map, World->GetCurrentLevel());
+	const FVector Offset(1000, 2000, 300);
+	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform(Offset));
+	if (!TestNotNull(TEXT("map is placed"), MapActor))
+	{
+		return false;
+	}
+	const TArray<AActor*> Actors = MapActor->GetEntityActors();
 	int32 Meshes = 0;
 	int32 Lights = 0;
 	int32 Exposures = 0;
 	for (const AActor* Actor : Actors)
 	{
 		Meshes += Actor->IsA<AStaticMeshActor>();
-		Lights += Actor->IsA<APointLight>();
+		Lights += Actor->IsA<AQuakePointLight>();
 		Exposures += Actor->IsA<APostProcessVolume>();
 	}
 	TestEqual(TEXT("an actor per mesh"), Meshes, Map->Meshes.Num());
-	TestTrue(TEXT("lights are spawned"), Lights > 0);
+	TestTrue(TEXT("lights get the plugin's light"), Lights > 0);
 	TestEqual(TEXT("one exposure volume"), Exposures, 1);
 	TestEqual(TEXT("an actor per entity"), Actors.Num() - Exposures, Map->Entities.Num());
 	for (const AActor* Actor : Actors)
 	{
-		if (Actor->IsA<APostProcessVolume>())
-		{
-			continue;
-		}
 		const UQuakeEntityComponent* Entity = Actor->FindComponentByClass<UQuakeEntityComponent>();
-		if (TestNotNull(TEXT("every actor carries its keys"), Entity))
+		TestFalse(TEXT("every actor has an id"), Entity->EntityId.IsEmpty());
+		if (!Actor->IsA<APostProcessVolume>())
 		{
 			TestEqual(TEXT("classname is among the keys"), Entity->GetKey(TEXT("classname")), Entity->ClassName);
 		}
@@ -153,8 +161,9 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 
 	const FQuakeMapEntity* Light = Map->Entities.FindByPredicate(
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("light"); });
-	const AActor* LightActor = *Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<APointLight>(); });
-	TestEqual(TEXT("light sits at its origin"), LightActor->GetActorLocation(), Light->Transform.GetLocation());
+	const AActor* LightActor = FindEntity(Actors, TEXT("light"));
+	TestEqual(TEXT("light sits at its origin, relative to the map"), LightActor->GetActorLocation(),
+		Light->Transform.GetLocation() + Offset);
 
 	// "light" "300": the static light keeps the values even though Unreal's setters ignore static lights
 	const UPointLightComponent* LightComponent = Cast<APointLight>(LightActor)->PointLightComponent;
@@ -166,21 +175,90 @@ bool FQuakeMapSpawnTest::RunTest(const FString& Parameters)
 
 	const FQuakeMapEntity* Start = Map->Entities.FindByPredicate(
 		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("info_player_start"); });
-	const APlayerStart* StartActor = Cast<APlayerStart>(
-		*Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<APlayerStart>(); }));
-	const double Feet = StartActor->GetActorLocation().Z - StartActor->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	TestEqual(TEXT("player start stands where the Quake player's feet are"), Feet,
-		Start->Transform.GetLocation().Z - 24.0 * Map->Settings.Scale, 0.01);
-
-	for (AActor* Actor : Actors)
+	const APlayerStart* StartActor = Cast<APlayerStart>(FindEntity(Actors, TEXT("info_player_start")));
+	if (TestNotNull(TEXT("player start"), StartActor))
 	{
-		World->EditorDestroyActor(Actor, false);
+		const double Feet = StartActor->GetActorLocation().Z -
+			StartActor->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		TestEqual(TEXT("player start stands where the Quake player's feet are"), Feet,
+			Start->Transform.GetLocation().Z + Offset.Z - 24.0 * Map->Settings.Scale, 0.01);
 	}
 
-	FText Error;
-	TestFalse(TEXT("dragging is refused before the level exists"),
-		GetMutableDefault<UActorFactoryQuakeMap>()->CanCreateActorFrom(FAssetData(Map), Error));
-	TestFalse(TEXT("with a hint"), Error.IsEmpty());
+	World->EditorDestroyActor(MapActor, true);
+	TestTrue(TEXT("deleting the map deletes its entities"),
+		!Actors.ContainsByPredicate([](const AActor* Actor) { return IsValid(Actor); }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeMapSyncTest, "LibQuake.Editor.SyncMap",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeMapSyncTest::RunTest(const FString& Parameters)
+{
+	UQuakeMap* Map = ImportTestMap(TEXT("sky_alpha_sync"));
+	if (!TestNotNull(TEXT("map imports"), Map))
+	{
+		return false;
+	}
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity);
+	AActor* Light = FindEntity(MapActor->GetEntityActors(), TEXT("light"));
+	AActor* Start = FindEntity(MapActor->GetEntityActors(), TEXT("info_player_start"));
+	const int32 Before = MapActor->GetEntityActors().Num();
+
+	// what a reimport after editing the map does: the light moved, the start is gone, a new entity came
+	FQuakeMapEntity* LightEntity = Map->Entities.FindByPredicate(
+		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("light"); });
+	LightEntity->Transform.AddToTranslation(FVector(0, 0, 100));
+	Map->Entities.RemoveAll(
+		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("info_player_start"); });
+	FQuakeMapEntity& Added = Map->Entities.AddDefaulted_GetRef();
+	Added.ClassName = TEXT("info_null");
+	Added.Keys.Add(TEXT("classname"), Added.ClassName);
+	LightEntity = Map->Entities.FindByPredicate(
+		[](const FQuakeMapEntity& Entity) { return Entity.ClassName == TEXT("light"); });
+	LibQuakeEditor::SyncMapActor(MapActor);
+
+	const TArray<AActor*> After = MapActor->GetEntityActors();
+	TestEqual(TEXT("the light keeps its actor"), FindEntity(After, TEXT("light")), Light);
+	TestEqual(TEXT("and follows the map"), Light->GetActorLocation(), LightEntity->Transform.GetLocation());
+	TestFalse(TEXT("the removed start loses its actor"), IsValid(Start));
+	TestNotNull(TEXT("the new entity gets one"), Cast<AQuakePointEntity>(FindEntity(After, TEXT("info_null"))));
+	TestEqual(TEXT("one gone, one new"), After.Num(), Before);
+
+	// mapping the light to another class replaces its actor
+	UQuakeEntityClasses* Classes = NewObject<UQuakeEntityClasses>();
+	Classes->Classes.Add(TEXT("light"), AQuakePointEntity::StaticClass());
+	Map->Settings.EntityClasses = Classes;
+	LibQuakeEditor::SyncMapActor(MapActor);
+	TestFalse(TEXT("the old light is gone"), IsValid(Light));
+	TestNotNull(TEXT("the light is a point entity now"),
+		Cast<AQuakePointEntity>(FindEntity(MapActor->GetEntityActors(), TEXT("light"))));
+
+	World->EditorDestroyActor(MapActor, true);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FQuakeEntityClassesTest, "LibQuake.Editor.EntityClasses",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FQuakeEntityClassesTest::RunTest(const FString& Parameters)
+{
+	TMap<FString, TSoftClassPtr<AActor>> Classes;
+	Classes.Add(TEXT("light*"), AQuakePointLight::StaticClass());
+	Classes.Add(TEXT("light_torch*"), AQuakePointEntity::StaticClass());
+	Classes.Add(TEXT("light_torch_small_walltorch"), APlayerStart::StaticClass());
+	TestTrue(TEXT("prefix"),
+		UQuakeEntityClasses::Find(Classes, TEXT("light_fluoro")).Get() == AQuakePointLight::StaticClass());
+	TestTrue(TEXT("the prefix without a suffix"),
+		UQuakeEntityClasses::Find(Classes, TEXT("light")).Get() == AQuakePointLight::StaticClass());
+	TestTrue(TEXT("the longer prefix wins"),
+		UQuakeEntityClasses::Find(Classes, TEXT("light_torch_x")).Get() == AQuakePointEntity::StaticClass());
+	TestTrue(TEXT("an exact name wins"),
+		UQuakeEntityClasses::Find(Classes, TEXT("light_torch_small_walltorch")).Get() == APlayerStart::StaticClass());
+	TestTrue(TEXT("no match"), UQuakeEntityClasses::Find(Classes, TEXT("info_null")).IsNull());
+	TestTrue(TEXT("the project settings bring the lights"),
+		UQuakeEntityClasses::Resolve(nullptr, TEXT("light")) == AQuakePointLight::StaticClass());
 	return true;
 }
 
@@ -204,7 +282,8 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("and is invisible"), TriggerEntity->bInvisible);
 
 	UWorld* World = GEditor->GetEditorWorldContext().World();
-	const TArray<AActor*> Actors = LibQuakeEditor::SpawnMapActors(Map, World->GetCurrentLevel());
+	AQuakeMapActor* MapActor = LibQuakeEditor::PlaceMap(Map, World, FTransform::Identity);
+	const TArray<AActor*> Actors = MapActor->GetEntityActors();
 	AActor* Trigger = FindEntity(Actors, TEXT("trigger_once"));
 	AActor* Wall = FindEntity(Actors, TEXT("func_wall"));
 	AActor* Null = FindEntity(Actors, TEXT("info_null"));
@@ -232,7 +311,7 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 		FVector(-96 * Map->Settings.Scale, 0, 32 * Map->Settings.Scale));
 
 	// "90 -45 0": the sun shines towards Quake's +y at 45 degrees, which is Unreal's -y
-	const AActor* const* Sun = Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<ADirectionalLight>(); });
+	const AActor* const* Sun = Actors.FindByPredicate([](const AActor* Actor) { return Actor->IsA<AQuakeSun>(); });
 	if (TestNotNull(TEXT("worldspawn sun"), Sun))
 	{
 		const FVector Direction = (*Sun)->GetActorForwardVector();
@@ -243,10 +322,7 @@ bool FQuakeTriggerTest::RunTest(const FString& Parameters)
 			100.0 / 128.0 * UE_DOUBLE_PI * 1.2, 0.001);
 	}
 
-	for (AActor* Actor : Actors)
-	{
-		World->EditorDestroyActor(Actor, false);
-	}
+	World->EditorDestroyActor(MapActor, true);
 	return true;
 }
 

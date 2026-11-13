@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Unreal Engine plugin that imports Quake 1 `.map`, `.bsp` and `.wad` files. A map becomes static meshes with
-collision from its brushes, lights and entities, placed in levels as a Level Instance. Built on
+collision from its brushes, lights and entities, dragged into a level like any other asset. Built on
 [libquake](https://github.com/libquake/libquake), which does the parsing, CSG and uvs.
 
 Experimental. Unreal Engine 5.8, tested on macOS and Windows.
@@ -24,7 +24,7 @@ The project needs C++ (Unreal compiles the plugin, libquake included, when the p
 
 1. Drag a `.wad` into the Content Browser.
 2. Drag a `.map` into the Content Browser.
-3. Right click the map > Place in Level.
+3. Drag the map into the viewport.
 
 The documentation is in [docs/](docs/index.md).
 

@@ -1,7 +1,8 @@
 # LibQuake for Unreal
 
 Unreal Engine plugin that imports Quake 1 `.map`, `.bsp` and `.wad` files. A map becomes static meshes with
-collision from its brushes, lights and one actor per entity, placed in levels as a Level Instance. It is built on
+collision from its brushes, lights and one actor per entity, dragged into a level like any other asset. It is
+built on
 [libquake](https://github.com/libquake/libquake), which does the parsing, CSG and uvs.
 
 Edit the map in [TrenchBroom](https://trenchbroom.github.io), save, and Unreal reimports it.
@@ -9,7 +10,7 @@ Edit the map in [TrenchBroom](https://trenchbroom.github.io), save, and Unreal r
 | | |
 |---|---|
 | Unreal Engine | 5.8 |
-| Platforms | the importer runs in the editor, tested on macOS. Placed maps are plain Unreal assets and actors |
+| Platforms | the importer runs in the editor, tested on macOS and Windows. Placed maps are plain Unreal assets and actors |
 | Status | experimental |
 
 ## Install
@@ -30,6 +31,6 @@ The project needs C++, Unreal compiles the plugin and libquake with it.
 | `.map` | `Quake Map` asset, a static mesh per brush entity and a material instance per texture |
 | `.bsp` | the same, with the textures from the bsp |
 
-Placing a map the first time makes its level, every placement is a Level Instance of it.
+A placed map is a `Quake Map Actor` with the actors of its entities attached, a reimport updates them.
 
 Start with [Getting started](guide/getting-started.md).

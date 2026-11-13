@@ -27,9 +27,11 @@ with their clip faces.
 
 ## Reimport
 
-A reimport updates the meshes and material instances in place, every placed instance shows the new geometry.
-The level made by the first placement is not rebuilt yet: lights and entities that were added or moved in the map
-show up after deleting the level and placing the map again.
+A reimport updates the meshes and material instances in place, and every placed map follows: entities keep their
+actor and get its place, mesh and keys again, new entities get an actor, the actors of removed ones are deleted.
+Properties the plugin does not set stay as they were edited in Unreal. An actor detached from its map actor is
+no longer part of the map. **Rebuild** in the details of a map actor does the same without a reimport, for
+example after changing the entity classes.
 
-Asset names depend on the class and the order of the entities in the map, a reimport keeps them as long as that
-order stays.
+Asset names and the ids that connect entities to their actors (`<classname>_<n>`) depend on the class and the
+order of the entities in the map, a reimport keeps them as long as that order stays.
