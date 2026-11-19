@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Copies the libquake sources the plugin builds into Source/ThirdParty/libquake. The C API (wrapper.*) and the
-# CMake files are left out. Every source gets a small file in Source/LibQuakeCore/Private/LibQuake that compiles
-# it inside THIRD_PARTY_INCLUDES_START/END, Unreal's warning settings for code it does not own.
+# Copies the libquake sources the plugin builds into Source/ThirdParty/libquake. The C API (wrapper.*), the
+# CMake files and the baker's Embree backend are left out, the baker uses libquake's own bvh here. Every source
+# gets a small file in Source/LibQuakeCore/Private/LibQuake that compiles it inside
+# THIRD_PARTY_INCLUDES_START/END, Unreal's warning settings for code it does not own.
 #
 #   Scripts/sync-libquake.sh           from a libquake checkout next to this repo (../libquake)
 #   Scripts/sync-libquake.sh v1.1.0    from that tag of github.com/libquake/libquake
@@ -23,7 +24,7 @@ rm -rf "$dest" "$units"
 mkdir -p "$dest" "$units"
 cp -R "$src/include" "$dest/include"
 cp -R "$src/src" "$dest/src"
-find "$dest/src" \( -name CMakeLists.txt -o -name 'wrapper.*' \) -delete
+find "$dest/src" \( -name CMakeLists.txt -o -name 'wrapper.*' -o -name bake_bvh_embree.cpp \) -delete
 cp "$src/LICENSE" "$dest/LICENSE"
 
 (cd "$dest/src" && find . -name '*.cpp' | sed 's#^\./##' | sort) | while read -r file; do
